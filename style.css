@@ -2,164 +2,327 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    font-family: "Microsoft Yahei", sans-serif;
 }
 
 body {
-    background: linear-gradient(135deg, #e8ebf2 0%, #d6dce8 100%);
-    height: 100vh;
-    overflow: hidden;
+    background-color: #161a23;
+    color: #e6edf7;
 }
 
-/* 整体布局：左右黄金分栏 */
-.app-shell {
-    display: flex;
-    width: 100%;
-    height: 100vh;
-    gap: 24px;
-    padding: 24px;
-}
-
-/* 左侧绘图容器 磨砂玻璃质感 */
-.view-container {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.85);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    overflow: hidden;
-}
-
-#mainCanvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-/* 右侧控制面板 深紫渐变高端面板 */
-.control-shell {
-    width: 360px;
-    background: linear-gradient(160deg, #4b2470 0%, #3a1c57 100%);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    padding: 28px 24px;
-    color: #ffffff;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.control-header h2 {
-    font-size: 19px;
-    font-weight: 500;
+/* 顶部标题 */
+.page-header {
+    background-color: #202736;
     text-align: center;
-    letter-spacing: 0.5px;
-    color: #f0e8f8;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 18px;
+    box-shadow: 0 2px 6px #00000040;
 }
-
-/* 控件组通用样式 */
-.control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.page-header h1 {
+    font-size: 24px;
+    color: #72c8ff;
+    margin-bottom: 6px;
 }
-
-.control-group label {
+.page-header p {
     font-size: 14px;
-    font-weight: 400;
-    color: #e2d8ee;
+    opacity: 0.8;
 }
 
-.label-row {
+/* 整体外层布局 */
+.main-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    max-width: 1600px;
+    margin: 20px auto;
+    gap: 20px;
+    padding: 0 15px;
 }
 
-.val-tag {
-    background: rgba(255, 255, 255, 0.12);
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 13px;
-    color: #fff;
-}
-
-/* 下拉选择框 */
-.control-group select {
-    width: 100%;
-    height: 34px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+/* 左侧控制面板 */
+.control-sidebar {
+    width: 300px;
+    background-color: #202736;
     border-radius: 8px;
-    color: #fff;
-    padding: 0 10px;
+    padding: 16px;
+    box-shadow: 0 2px 8px #00000035;
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+}
+.control-title {
+    font-size: 17px;
+    color: #72c8ff;
+    text-align: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #3a4456;
+    margin-bottom: 15px;
+}
+.control-group, .data-group, .help-group {
+    background-color: #2c3648;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+}
+.group-title {
     font-size: 14px;
-    outline: none;
-    transition: all 0.2s ease;
+    color: #b0c4de;
+    margin-bottom: 10;
+}
+.control-item {
+    margin-bottom: 12px;
+}
+.control-item label {
+    font-size: 13px;
+    display: block;
+    margin-bottom: 4px;
+}
+.value-show {
+    float: right;
+    color: #ffc857;
+    font-weight: bold;
+    font-size: 13px;
 }
 
-.control-group select:hover {
-    background: rgba(255, 255, 255, 0.18);
-}
-
-/* 滑动条美化 */
-.control-group input[type="range"] {
+/* 滑块样式 */
+input[type="range"] {
     width: 100%;
     height: 6px;
-    background: rgba(255, 255, 255, 0.15);
+    background: #3a4456;
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
 }
-
-.control-group input[type="range"]::-webkit-slider-thumb {
+input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     border-radius: 50%;
-    background: #c794e8;
+    background: #72c8ff;
     cursor: pointer;
-    box-shadow: 0 0 8px rgba(199, 148, 232, 0.6);
 }
 
-/* 按钮组 */
-.btn-group {
+/* 按钮 */
+.btn-row {
     display: flex;
-    gap: 12px;
-    margin-top: 8px;
+    gap: 8px;
 }
-
-.btn {
+.ctrl-btn {
     flex: 1;
-    height: 36px;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
+    background: #348eda;
+    color: #fff;
+    padding: 7px 0;
+    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.25s ease;
+    font-size: 13px;
+}
+.ctrl-btn:hover {
+    background: #2878bd;
 }
 
-.btn.primary {
-    background: linear-gradient(90deg, #9b59b6, #b274d0);
-    color: #fff;
+/* 数据、帮助文本 */
+.data-line {
+    font-size: 13px;
+    margin: 5px 0;
+}
+.data-line span {
+    color: #ffc857;
+    font-weight: bold;
+}
+.help-text {
+    font-size: 12px;
+    color: #b0c4de;
+    line-height: 1.5;
 }
 
-.btn.primary:hover {
-    box-shadow: 0 0 12px rgba(155, 89, 182, 0.5);
-    transform: translateY(-2px);
+/* ========== Tab 切换核心样式 ========== */
+.tab-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+/* Tab 导航栏 */
+.tab-nav {
+    display: flex;
+    background-color: #202736;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    margin-bottom: 2px;
+}
+.tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+.tab-item.active {
+    background-color: #2c3648;
+    border-bottom: 3px solid #348eda;
+    color: #72c8ff;
+}
+.tab-item:hover {
+    background-color: #273040;
 }
 
-.btn.secondary {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
+/* Tab 内容容器 */
+.tab-content {
+    background-color: #202736;
+    border-radius: 0 0 8px 8px;
+    padding: 16px;
+}
+.tab-panel {
+    display: none; /* 默认隐藏 */
+}
+.tab-panel.active {
+    display: block; /* 激活显示 */
+    animation: fadeIn 0.4s ease;
+}
+/* 淡入动画 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-.btn.secondary:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: translateY(-2px);
+/* 进度条 */
+.progress-bar {
+    background: #2c3648;
+    padding: 10px 15px;
+    border-radius: 6px;
+    border-left: 4px #348eda solid;
+    margin-bottom: 18px;
+}
+.progress-text {
+    font-size: 14px;
+}
+
+/* 仿真卡片通用 */
+.sim-section {
+    background-color: #2c3648;
+    padding: 18px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px #00000035;
+    margin-bottom: 18px;
+}
+.section-title {
+    font-size: 17px;
+    color: #72c8ff;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #3a4456;
+    margin-bottom: 15px;
+}
+.sim-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* LED 结构 */
+.led-full-display {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+.led-package {
+    width: 230px;
+    height: 170px;
+    border: 2px solid #4a5568;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    padding: 10px;
+}
+.photon-area {
+    width: 90px;
+    height: 33px;
+    border-radius: 50% 50% 0 0;
+    background: rgba(255,255,0.05);
+    text-align: center;
+    line-height: 33px;
+    font-size: 12px;
+    transition: 0.3s;
+}
+.carrier-wrap {
+    position: relative;
+    width: 220px;
+    height: 80px;
+}
+#carrier-tab1, #carrier-tab2, #carrier-tab3 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: transparent;
+}
+.led-pn {
+    width: 220px;
+    height: 80px;
+    display: flex;
+    border: 2px solid #4a5568;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.p-area {
+    width: 40%;
+    background: #5c4ed8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+.light-layer {
+    width: 20%;
+    background: #607088;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+.n-area {
+    width: 40%;
+    background: #1792b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+.substrate {
+    width: 170px;
+    height: 26px;
+    background: #3a4456;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 26px;
+    font-size: 12px;
+}
+
+/* LED 灯体 */
+.led-dark {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #111;
+    opacity: 0.2;
+}
+#led-tab1 {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #111;
+    transition: 0.3s;
+}
+
+.process-desc {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #b0c4de;
+}
+
+/* 画布统一样式 */
+canvas {
+    display: block;
+    background: #1e293b;
+    border-radius: 4px;
 }

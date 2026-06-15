@@ -1,86 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Density of States | Advanced Simulation</title>
+    <title>LED 偏置状态切换仿真平台</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-shell">
-        <!-- 左侧可视化绘图区 -->
-        <div class="view-container">
-            <canvas id="mainCanvas"></canvas>
-        </div>
+    <header class="page-header">
+        <h1>基于PN结的LED交互式仿真平台</h1>
+        <p>点击顶部标签切换：正向偏置 / 零偏置 / 反向偏置</p>
+    </header>
 
-        <!-- 右侧高端控制面板 -->
-        <div class="control-shell">
-            <div class="control-header">
-                <h2>Simulation Controls</h2>
-            </div>
+    <div class="main-container">
+        <!-- 左侧全局控制面板 -->
+        <aside class="control-sidebar">
+            <div class="control-title">Simulation Controls</div>
 
             <div class="control-group">
-                <label>Semiconductor Material</label>
-                <select id="matSelect">
-                    <option value="Si">Silicon (Si)</option>
-                    <option value="GaAs">Gallium Arsenide (GaAs)</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <div class="label-row">
-                    <label>Temperature (K)</label>
-                    <span class="val-tag" id="tempVal">300</span>
+                <h3 class="group-title">工作电压 (V)</h3>
+                <div class="control-item">
+                    <label>全局电压</label>
+                    <input type="range" id="volt-slider" min="-2" max="5" step="0.1" value="2.0">
+                    <span class="value-show" id="volt-value">2.0</span>
                 </div>
-                <input type="range" id="tempSlider" min="100" max="600" value="300" step="10">
             </div>
 
             <div class="control-group">
-                <div class="label-row">
-                    <label>Doping Concentration (cm⁻³)</label>
-                    <span class="val-tag" id="dopeVal">1e15</span>
+                <h3 class="group-title">半导体材料参数</h3>
+                <div class="control-item">
+                    <label>禁带宽度 (eV)</label>
+                    <input type="range" id="band-slider" min="1.6" max="3.2" step="0.05" value="1.8">
+                    <span class="value-show" id="band-value">1.8</span>
                 </div>
-                <input type="range" id="dopeSlider" min="14" max="18" value="15" step="1">
-            </div>
-
-            <div class="control-group">
-                <label>Doping Type</label>
-                <select id="dopeType">
-                    <option value="n">N-type (Donor)</option>
-                    <option value="p">P-type (Acceptor)</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <div class="label-row">
-                    <label>Energy Range (eV)</label>
-                    <span class="val-tag" id="energyVal">2.0</span>
+                <div class="control-item">
+                    <label>电子迁移率 (cm²/(V·s))</label>
+                    <input type="range" id="mobility-e-slider" min="100" max="1200" step="50" value="600">
+                    <span class="value-show" id="mobility-e-value">600</span>
                 </div>
-                <input type="range" id="energySlider" min="1.0" max="4.0" value="2.0" step="0.1">
+                <div class="control-item">
+                    <label>掺杂浓度 (×10¹⁸ cm⁻³)</label>
+                    <input type="range" id="doping-slider" min="1" max="20" step="1" value="10">
+                    <span class="value-show" id="doping-value">10</span>
+                </div>
             </div>
 
             <div class="control-group">
-                <div class="label-row">
-                    <label>Animation Speed</label>
-                    <span class="val-tag" id="speedVal">1.0x</span>
+                <h3 class="group-title">环境热参数</h3>
+                <div class="control-item">
+                    <label>环境温度 (℃)</label>
+                    <input type="range" id="temp-slider" min="0" max="120" step="1" value="25">
+                    <span class="value-show" id="temp-value">25</span>
                 </div>
-                <input type="range" id="speedSlider" min="0.1" max="3.0" value="1.0" step="0.1">
             </div>
 
             <div class="control-group">
-                <div class="label-row">
-                    <label>Thermal Fluctuation</label>
-                    <span class="val-tag" id="fluctVal">1.0</span>
+                <h3 class="group-title">功能控制</h3>
+                <div class="btn-row">
+                    <button id="toggle-animation" class="ctrl-btn">启停动画</button>
+                    <button id="reset-btn" class="ctrl-btn">重置参数</button>
                 </div>
-                <input type="range" id="fluctSlider" min="0" max="2.0" value="1.0" step="0.1">
             </div>
 
-            <div class="btn-group">
-                <button id="animBtn" class="btn primary">Start Animation</button>
-                <button id="resetBtn" class="btn secondary">Reset All</button>
+            <div class="control-group">
+                <h3 class="group-title">数据操作</h3>
+                <div class="btn-row">
+                    <button id="export-btn" class="ctrl-btn">导出数据</button>
+                </div>
+            </div>
+
+            <div class="data-group">
+                <h3 class="group-title">Real-Time Data</h3>
+                <div class="data-line">工作电流: <span id="current-data">0</span> mA</div>
+                <div class="data-line">发光波长: <span id="wave-data">0</span> nm</div>
+                <div class="data-line">发光强度: <span id="light-data">0</span> cd</div>
+                <div class="data-line">结温损耗: <span id="loss-data">0</span> %</div>
+                <div class="data-line">当前偏置: <span id="bias-state">正向偏置</span></div>
+            </div>
+
+            <div class="help-group">
+                <h3 class="group-title">使用说明</h3>
+                <p class="help-text">1. 顶部标签切换三种偏置视图<br>2. 拖动电压滑块改变工作状态<br>3. 调整材料/温度观察变化</p>
+            </div>
+        </aside>
+
+        <!-- 右侧 Tab 切换主区域 -->
+        <div class="tab-main">
+            <!-- Tab 导航栏 -->
+            <div class="tab-nav">
+                <div class="tab-item active" data-tab="tab1">正向偏置（发光）</div>
+                <div class="tab-item" data-tab="tab2">零偏置（无电压）</div>
+                <div class="tab-item" data-tab="tab3">反向偏置（负压）</div>
+            </div>
+
+            <!-- Tab 内容容器 -->
+            <div class="tab-content">
+                <!-- 页面1：正向偏置 -->
+                <div class="tab-panel active" id="tab1">
+                    <div class="progress-bar">
+                        <span class="progress-text">当前视图：正向偏置 | LED 正常发光</span>
+                    </div>
+                    <section class="sim-section">
+                        <h2 class="section-title">器件结构 & 载流子复合</h2>
+                        <div class="sim-content">
+                            <div class="led-full-display">
+                                <div class="led-package">
+                                    <div class="photon-area" id="photon-tab1">光子发射区</div>
+                                    <div class="carrier-wrap">
+                                        <canvas id="carrier-tab1" width="220" height="80"></canvas>
+                                        <div class="led-pn">
+                                            <div class="p-area">P型区</div>
+                                            <div class="light-layer">发光层</div>
+                                            <div class="n-area">N型区</div>
+                                        </div>
+                                    </div>
+                                    <div class="substrate">衬底</div>
+                                </div>
+                                <div id="led-tab1"></div>
+                            </div>
+                            <p class="process-desc" id="desc-tab1">正向偏置：载流子辐射复合，释放光子</p>
+                        </div>
+                    </section>
+                    <section class="sim-section">
+                        <h2 class="section-title">能带示意图</h2>
+                        <div class="sim-content">
+                            <canvas id="band-tab1" width="750" height="160"></canvas>
+                        </div>
+                    </section>
+                    <section class="sim-section">
+                        <h2 class="section-title">I-V & 光强特性曲线</h2>
+                        <div class="sim-content">
+                            <canvas id="chart-tab1" width="750" height="260"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 页面2：零偏置 -->
+                <div class="tab-panel" id="tab2">
+                    <div class="progress-bar">
+                        <span class="progress-text">当前视图：零偏置 | 无外加电压</span>
+                    </div>
+                    <section class="sim-section">
+                        <h2 class="section-title">器件结构 & 静态状态</h2>
+                        <div class="sim-content">
+                            <div class="led-full-display">
+                                <div class="led-package">
+                                    <div class="photon-area">光子发射区</div>
+                                    <div class="carrier-wrap">
+                                        <canvas id="carrier-tab2" width="220" height="80"></canvas>
+                                        <div class="led-pn">
+                                            <div class="p-area">P型区</div>
+                                            <div class="light-layer">发光层</div>
+                                            <div class="n-area">N型区</div>
+                                        </div>
+                                    </div>
+                                    <div class="substrate">衬底</div>
+                                </div>
+                                <div class="led-dark"></div>
+                            </div>
+                            <p class="process-desc" id="desc-tab2">零偏置：能带平直，无电流、无发光</p>
+                        </div>
+                    </section>
+                    <section class="sim-section">
+                        <h2 class="section-title">能带示意图</h2>
+                        <div class="sim-content">
+                            <canvas id="band-tab2" width="750" height="160"></canvas>
+                        </div>
+                    </section>
+                    <section class="sim-section">
+                        <h2 class="section-title">I-V & 光强特性曲线</h2>
+                        <div class="sim-content">
+                            <canvas id="chart-tab2" width="750" height="260"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 页面3：反向偏置 -->
+                <div class="tab-panel" id="tab3">
+                    <div class="progress-bar">
+                        <span class="progress-text">当前视图：反向偏置 | 负压状态</span>
+                    </div>
+                    <section class="sim-section">
+                        <h2 class="section-title">器件结构 & 截止状态</h2>
+                        <div class="sim-content">
+                            <div class="led-full-display">
+                                <div class="led-package">
+                                    <div class="photon-area">光子发射区</div>
+                                    <div class="carrier-wrap">
+                                        <canvas id="carrier-tab3" width="220" height="80"></canvas>
+                                        <div class="led-pn">
+                                            <div class="p-area">P型区</div>
+                                            <div class="light-layer">发光层</div>
+                                            <div class="n-area">N型区</div>
+                                        </div>
+                                    </div>
+                                    <div class="substrate">衬底</div>
+                                </div>
+                                <div class="led-dark"></div>
+                            </div>
+                            <p class="process-desc" id="desc-tab3">反向偏置：势垒加宽，载流子无法移动</p>
+                        </div>
+                    </section>
+                    <section class="sim-section">
+                        <h2 class="section-title">能带示意图</h2>
+                        <div class="sim-content">
+                            <canvas id="band-tab3" width="750" height="160"></canvas>
+                        </div>
+                    </section>
+                    <section class="sim-section">
+                        <h2 class="section-title">I-V & 光强特性曲线</h2>
+                        <div class="sim-content">
+                            <canvas id="chart-tab3" width="750" height="260"></canvas>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
 </body>
 </html>

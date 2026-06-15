@@ -1,371 +1,489 @@
-// 物理基础常数
-const k = 8.617e-5;
-const q = 1.602e-19;
-const h = 6.626e-34;
-const m0 = 9.109e-31;
+// ========== 1. 全局DOM元素 ==========
+// 左侧控制滑块
+const voltSlider = document.getElementById('volt-slider');
+const voltValue = document.getElementById('volt-value');
+const bandSlider = document.getElementById('band-slider');
+const bandValue = document.getElementById('band-value');
+const tempSlider = document.getElementById('temp-slider');
+const tempValue = document.getElementById('temp-value');
+const mobilityESlider = document.getElementById('mobility-e-slider');
+const mobilityEValue = document.getElementById('mobility-e-value');
+const dopingSlider = document.getElementById('doping-slider');
+const dopingValue = document.getElementById('doping-value');
 
-// 半导体材料参数
-const materialDB = {
-    Si:    { Eg: 1.12,  mn: 1.08, mp: 0.56 },
-    GaAs:  { Eg: 1.424, mn: 0.067, mp: 0.45 }
+// 数据文本
+const currentData = document.getElementById('current-data');
+const waveData = document.getElementById('wave-data');
+const lightData = document.getElementById('light-data');
+const lossData = document.getElementById('loss-data');
+const biasState = document.getElementById('bias-state');
+
+// 按钮
+const resetBtn = document.getElementById('reset-btn');
+const exportBtn = document.getElementById('export-btn');
+const toggleAnim = document.getElementById('toggle-animation');
+
+// Tab 切换元素
+const tabItems = document.querySelectorAll('.tab-item');
+const tabPanels = document.querySelectorAll('.tab-panel');
+
+// 三个页面 载流子画布
+const carrier1 = document.getElementById('carrier-tab1');
+const carrier2 = document.getElementById('carrier-tab2');
+const carrier3 = document.getElementById('carrier-tab3');
+const c1Ctx = carrier1.getContext('2d');
+const c2Ctx = carrier2.getContext('2d');
+const c3Ctx = carrier3.getContext('2d');
+
+// 三个页面 能带画布
+const band1 = document.getElementById('band-tab1');
+const band2 = document.getElementById('band-tab2');
+const band3 = document.getElementById('band-tab3');
+const b1Ctx = band1.getContext('2d');
+const b2Ctx = band2.getContext('2d');
+const b3Ctx = band3.getContext('2d');
+
+// 三个页面 曲线画布
+const chart1 = document.getElementById('chart-tab1');
+const chart2 = document.getElementById('chart-tab2');
+const chart3 = document.getElementById('chart-tab3');
+const ch1Ctx = chart1.getContext('2d');
+const ch2Ctx = chart2.getContext('2d');
+const ch3Ctx = chart3.getContext('2d');
+
+// 正向页面 发光元素
+const photon1 = document.getElementById('photon-tab1');
+const led1 = document.getElementById('led-tab1');
+
+// 描述文本
+const desc1 = document.getElementById('desc-tab1');
+const desc2 = document.getElementById('desc-tab2');
+const desc3 = document.getElementById('desc-tab3');
+
+// ========== 2. 全局仿真参数 ==========
+let simParam = {
+    voltage: 2.0,
+    bandGap: 1.8,
+    temp: 25,
+    mobilityE: 600,
+    doping: 10,
+    current: 0,
+    wavelength: 0,
+    lightIntensity: 0,
+    heatLoss: 0,
+    isAnimRun: true
 };
 
-// DOM 元素
-const canvas = document.getElementById('mainCanvas');
-const ctx = canvas.getContext('2d');
-const matSelect = document.getElementById('matSelect');
-const tempSlider = document.getElementById('tempSlider');
-const tempVal = document.getElementById('tempVal');
-const dopeSlider = document.getElementById('dopeSlider');
-const dopeVal = document.getElementById('dopeVal');
-const dopeType = document.getElementById('dopeType');
-const energySlider = document.getElementById('energySlider');
-const energyVal = document.getElementById('energyVal');
-const speedSlider = document.getElementById('speedSlider');
-const speedVal = document.getElementById('speedVal');
-const fluctSlider = document.getElementById('fluctSlider');
-const fluctVal = document.getElementById('fluctVal');
-const animBtn = document.getElementById('animBtn');
-const resetBtn = document.getElementById('resetBtn');
+let carriers1 = [], carriers2 = [], carriers3 = [];
+const H_CONST = 1240;
+const V_ON = 1.6;
+const X_MAX = 5;
+const Y_MAX = 50;
 
-// 全局仿真参数
-let sim = {
-    mat: 'Si',
-    T: 300,
-    dop: 1e15,
-    type: 'n',
-    eRange: 2.0,
-    aSpeed: 1.0,
-    fluct: 1.0,
-    runAnim: false,
-    carriers: []
-};
-
-// 画布自适应
-function resizeCanvas() {
-    const wrap = canvas.parentElement;
-    canvas.width = wrap.clientWidth;
-    canvas.height = wrap.clientHeight;
-    renderFull();
-}
-window.addEventListener('resize', resizeCanvas);
-
-// 物理计算：有效状态密度
-function calcN(T, mStar) {
-    const m = mStar * m0;
-    const term = (2 * Math.PI * m * k * T * q) / (h * h);
-    return 2 * Math.pow(term, 1.5) / 1e6;
+// ========== 3. 工具函数 ==========
+// 判断偏置状态
+function getBiasStatus(v) {
+    if (v < -0.1) return "反向偏置";
+    if (v > 0.1) return "正向偏置";
+    return "零偏置（未加电压）";
 }
 
-// 物理计算：费米能级
-function calcEF(T, Nd, mat, type) {
-    const { Eg, mn, mp } = materialDB[mat];
-    const Ec = Eg / 2;
-    const Ev = -Eg / 2;
-    if(type === 'n'){
-        const Nc = calcN(T, mn);
-        return Ec - k * T * Math.log(Nc / Nd);
-    }else{
-        const Nv = calcN(T, mp);
-        return Ev + k * T * Math.log(Nv / Nd);
+// 单电压点计算电流、光强
+function calcPoint(v) {
+    let tempFactor = 1 + (simParam.temp - 25) * 0.012;
+    let materialFactor = (simParam.mobilityE / 600) * (simParam.doping / 10);
+    let i = 0;
+    if (v >= V_ON) {
+        i = Math.pow(v - V_ON, 2) * 15 * tempFactor * materialFactor;
+    }
+    i = Math.min(i, Y_MAX);
+    let lossFactor = Math.max(0, 1 - (simParam.temp / 150));
+    let l = i * lossFactor * 0.8;
+    return {v, i, l};
+}
+
+// ========== 4. 核心仿真计算 ==========
+function calcSimulation() {
+    simParam.wavelength = Math.round(H_CONST / simParam.bandGap);
+    const pt = calcPoint(simParam.voltage);
+    simParam.current = parseFloat(pt.i.toFixed(2));
+    simParam.lightIntensity = parseFloat(pt.l.toFixed(2));
+    simParam.heatLoss = Math.round((simParam.temp / 120) * 100);
+
+    biasState.innerText = getBiasStatus(simParam.voltage);
+    updateDataView();
+    updateAllDesc();
+    updateLedEffect();
+
+    // 同步绘制所有画布
+    drawAllChart();
+    drawAllBand();
+}
+
+// 更新数据面板
+function updateDataView() {
+    currentData.innerText = simParam.current;
+    waveData.innerText = simParam.wavelength;
+    lightData.innerText = simParam.lightIntensity;
+    lossData.innerText = simParam.heatLoss;
+}
+
+// 更新三个页面描述文字
+function updateAllDesc() {
+    const v = simParam.voltage;
+    // 正向页
+    if (v < -0.1) {
+        desc1.innerText = "反向电压：LED 截止，无发光";
+    } else if (v >= -0.1 && v <= 0.1) {
+        desc1.innerText = "零电压：无载流子复合，LED 不发光";
+    } else if (v >= V_ON) {
+        desc1.innerText = "正向偏置：载流子辐射复合，电子跃迁释放光子";
+    } else {
+        desc1.innerText = "正向低压：电流较小，亮度微弱";
+    }
+    // 零偏页
+    if (v < -0.1) {
+        desc2.innerText = "当前为反向偏置，能带弯曲，势垒加宽";
+    } else if (v >= -0.1 && v <= 0.1) {
+        desc2.innerText = "零偏置：PN结能带平直，动态平衡";
+    } else {
+        desc2.innerText = "当前为正向偏置，能带开始凹陷";
+    }
+    // 反向页
+    if (v < -0.1) {
+        desc3.innerText = "反向偏置：势垒大幅加宽，载流子无法导通";
+    } else if (v >= -0.1 && v <= 0.1) {
+        desc3.innerText = "零偏置：无负压，器件处于静态";
+    } else {
+        desc3.innerText = "正向电压下，反向截止特性消失";
     }
 }
 
-// 物理计算：态密度（曲线形态随材料/能量动态变化）
-function calcDOS(E, mat) {
-    const { Eg, mn, mp } = materialDB[mat];
-    const Ec = Eg / 2;
-    const Ev = -Eg / 2;
-    const mnE = mn * m0;
-    const mpE = mp * m0;
-    const base = 1 / (2 * Math.PI**2) * Math.pow(2 * q / (h*h), 1.5);
-
-    if(E >= Ec) return base * Math.pow(mnE, 1.5) * Math.sqrt(E - Ec);
-    if(E <= Ev) return base * Math.pow(mpE, 1.5) * Math.sqrt(Ev - E);
-    return 0;
-}
-
-// 初始化载流子（带运动参数，热波动直接影响轨迹）
-function spawnCarriers() {
-    sim.carriers = [];
-    const { Eg } = materialDB[sim.mat];
-    const w = canvas.width, h = canvas.height;
-    const pad = 50;
-    const cy = h / 2;
-    const cbY = cy - (Eg/2 / sim.eRange) * (h - 2*pad);
-    const vbY = cy + (Eg/2 / sim.eRange) * (h - 2*pad);
-
-    for(let i = 0; i < 12; i++){
-        // 电子 导带
-        sim.carriers.push({
-            type: 'e',
-            x: Math.random()*(w-pad*2)+pad,
-            y: Math.random()*(cy - cbY)+cbY,
-            vx: (Math.random()-0.5)*sim.fluct*2,
-            vy: (Math.random()-0.5)*sim.fluct*2
-        });
-        // 空穴 价带
-        sim.carriers.push({
-            type: 'h',
-            x: Math.random()*(w-pad*2)+pad,
-            y: Math.random()*(vbY - cy)+cy,
-            vx: (Math.random()-0.5)*sim.fluct*2,
-            vy: (Math.random()-0.5)*sim.fluct*2
-        });
+// 正向页LED发光效果
+function updateLedEffect() {
+    let color = "#111";
+    let shadow = "none";
+    const wave = simParam.wavelength;
+    if (simParam.voltage >= V_ON && simParam.isAnimRun) {
+        if (wave >= 620) color = "#ef4444";
+        else if (wave >= 570) color = "#f97316";
+        else if (wave >= 495) color = "#22c55e";
+        else if (wave >= 450) color = "#3b82f6";
+        else color = "#a855f7";
+        shadow = "0 0 30px 10px " + color;
     }
+    led1.style.background = color;
+    led1.style.boxShadow = shadow;
+    let opacity = simParam.current > 0 ? Math.min(1, simParam.current / 30) : 0.2;
+    led1.style.opacity = opacity;
+
+    // 光子区
+    let bg = "rgba(255,255,255,0.05)";
+    let glow = "none";
+    if (simParam.voltage >= V_ON && simParam.isAnimRun) {
+        if (wave >= 620) bg = "rgba(239,68,0.5)", glow = "0 -8px 20px rgba(239,68,68,0.6)";
+        else if (wave >= 570) bg = "rgba(249,115,0.5)", glow = "0 -8px 20px rgba(249,115,22,0.6)";
+        else if (wave >= 495) bg = "rgba(34,197,0.5)", glow = "0 -8px 20px rgba(34,197,94,0.6)";
+        else if (wave >= 450) bg = "rgba(59,130,0.5)", glow = "0 -8px 20px rgba(59,130,246,0.6)";
+        else bg = "rgba(168,85,0.5)", glow = "0 -8px 20px rgba(168,85,247,0.6)";
+    }
+    photon1.style.background = bg;
+    photon1.style.boxShadow = glow;
 }
 
-// 主渲染函数：分层绘制 网格→坐标轴→能带→费米能级→态密度→粒子（全图形联动）
-function renderFull() {
-    const { mat, T, dop, type, eRange } = sim;
-    const { Eg } = materialDB[mat];
-    const EF = calcEF(T, dop, mat, type);
+// ========== 载流子三组独立动画 ==========
+function animateCarrier(ctx, canvas, carrierArr) {
+    if (!simParam.isAnimRun || simParam.voltage < V_ON) {
+        carrierArr.length = 0;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        requestAnimationFrame(()=>animateCarrier(ctx,canvas,carrierArr));
+        return;
+    }
+    const speed = simParam.current / 10;
+    const rate = 0.3 + speed * 0.05 * (simParam.doping / 10) * (simParam.mobilityE / 600);
+    if (Math.random() < rate) {
+        if (Math.random() > 0.5) {
+            carrierArr.push({x:20, y:40, vx:1.5+speed*0.2});
+        } else {
+            carrierArr.push({x:200, y:40, vx:-1.5-speed*0.2});
+        }
+    }
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    carrierArr.forEach((c,i)=>{
+        c.x += c.vx;
+        ctx.beginPath();
+        ctx.fillStyle = c.vx>0 ? "#facc15" : "#38bdf8";
+        ctx.arc(c.x,40,4,0,Math.PI*2);
+        ctx.fill();
+        if(c.x>100 && c.x<140){
+            ctx.fillStyle="#fff";
+            ctx.arc(c.x,40,6,0,Math.PI*2);
+            ctx.fill();
+            if(Math.random()<0.1) carrierArr.splice(i,1);
+        }
+        if(c.x<0||c.x>220) carrierArr.splice(i,1);
+    });
+    requestAnimationFrame(()=>animateCarrier(ctx,canvas,carrierArr));
+}
 
+// ========== 曲线绘制（复用） ==========
+function drawChartSingle(ctx, canvas) {
     const w = canvas.width;
     const h = canvas.height;
-    const pad = 50;
-    const cy = h / 2;
-    const EMin = -eRange;
-    const EMax = eRange;
-    const totalE = EMax - EMin;
-
+    const padding = 40;
     ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0,0,w,h);
 
-    // 1. 精致浅色网格背景
-    ctx.fillStyle = '#f7f8fa';
-    ctx.fillRect(pad, pad, w-pad*2, h-pad*2);
-    ctx.strokeStyle = '#e4e7ed';
+    ctx.strokeStyle = '#94a3b8';
     ctx.lineWidth = 1;
-    const gridSize = 25;
-    // 横向网格
-    for(let y = pad; y <= h-pad; y += gridSize){
-        ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y); ctx.stroke();
-    }
-    // 纵向网格
-    for(let x = pad; x <= w-pad; x += gridSize){
-        ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,h-pad); ctx.stroke();
-    }
-
-    // 2. 坐标轴 + 精细刻度
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth = 1.5;
-    // 纵轴 能量 eV
-    ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,h-pad); ctx.stroke();
-    // 横轴 态密度
-    ctx.beginPath(); ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
-
-    // 纵轴能量刻度（随能量范围动态变化）
-    ctx.fillStyle = '#555';
-    ctx.font = '12px Segoe UI';
-    const eTicks = [-eRange, -eRange/2, 0, eRange/2, eRange];
-    eTicks.forEach(ev => {
-        const y = cy - (ev / eRange) * (h - 2*pad);
-        ctx.beginPath(); ctx.moveTo(pad-5,y); ctx.lineTo(pad,y); ctx.stroke();
-        ctx.fillText(ev.toFixed(1)+' eV', pad-35, y+4);
-    });
-
-    // 轴标题
-    ctx.save();
-    ctx.translate(22, h/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.font = '14px Segoe UI';
-    ctx.fillText('Energy (eV)',0,0);
-    ctx.restore();
-    ctx.fillText('Density of States', w/2-80, h-18);
-
-    // 3. 导带/价带 渐变高亮能带线（材料变化 → 线条位置+渐变区域同步变）
-    const cbY = cy - (Eg/2 / eRange) * (h - 2*pad);
-    const vbY = cy + (Eg/2 / eRange) * (h - 2*pad);
-    // 能带渐变填充
-    const gradCB = ctx.createLinearGradient(0,cbY-20,0,cbY);
-    gradCB.addColorStop(0,'rgba(255,153,51,0)');
-    gradCB.addColorStop(1,'rgba(255,153,51,0.25)');
-    ctx.fillStyle = gradCB;
-    ctx.fillRect(pad, cbY-20, w-pad*2, 20);
-
-    const gradVB = ctx.createLinearGradient(0,vbY,0,vbY+20);
-    gradVB.addColorStop(0,'rgba(255,153,51,0.25)');
-    gradVB.addColorStop(1,'rgba(255,153,51,0)');
-    ctx.fillStyle = gradVB;
-    ctx.fillRect(pad, vbY, w-pad*2, 20);
-
-    // 能带主线
-    ctx.strokeStyle = '#ff9933';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(pad,cbY); ctx.lineTo(w-pad,cbY); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(pad,vbY); ctx.lineTo(w-pad,vbY); ctx.stroke();
-    ctx.fillStyle = '#333';
-    ctx.fillText('CB', pad+8, cbY-6);
-    ctx.fillText('VB', pad+8, vbY+18);
-
-    // 4. 费米能级 红色高亮线 + 半透明能级带（参数变化 → 整条线+填充区域移动）
-    const efY = cy - (EF / eRange) * (h - 2*pad);
-    // 费米能级填充带
-    const gradEF = ctx.createLinearGradient(0,efY-15,0,efY+15);
-    gradEF.addColorStop(0,'rgba(236,71,71,0)');
-    gradEF.addColorStop(0.5,'rgba(236,71,71,0.22)');
-    gradEF.addColorStop(1,'rgba(236,71,71,0)');
-    ctx.fillStyle = gradEF;
-    ctx.fillRect(pad, efY-15, w-pad*2, 30);
-    // 费米主线
-    ctx.strokeStyle = '#ec4747';
-    ctx.setLineDash([6,4]);
-    ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(pad,efY); ctx.lineTo(w-pad,efY); ctx.stroke();
-    ctx.setLineDash([]);
-    // 费米数值标注
-    ctx.fillStyle = '#ec4747';
-    ctx.font = '13px Segoe UI';
-    ctx.fillText(`E_F = ${EF.toFixed(3)} eV`, w-140, efY-8);
-
-    // 5. 态密度曲线 + 渐变填充（材料/能量变化 → 曲线形态、峰值、面积完全形变）
-    const dosGrad = ctx.createLinearGradient(0,0,w,0);
-    dosGrad.addColorStop(0,'rgba(41,147,237,0.1)');
-    dosGrad.addColorStop(1,'rgba(41,147,237,0.3)');
-    ctx.fillStyle = dosGrad;
-    ctx.strokeStyle = '#2993ed';
-    ctx.lineWidth = 2.2;
-
     ctx.beginPath();
-    let first = true;
-    const step = totalE / 700;
-    for(let E = EMin; E <= EMax; E += step){
-        const dos = calcDOS(E, mat);
-        const x = pad + dos * 2200;
-        const y = cy - (E / eRange) * (h - 2*pad);
-        if(first) { ctx.moveTo(x,y); first = false; }
-        else ctx.lineTo(x,y);
-    }
-    ctx.lineTo(pad, cy - (EMax/eRange)*(h-2*pad));
-    ctx.lineTo(pad, cy - (EMin/eRange)*(h-2*pad));
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(padding, h-padding);
+    ctx.lineTo(w-padding, h-padding);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, h-padding);
     ctx.stroke();
 
-    // 6. 载流子粒子（发光特效，热波动/速度实时改变运动状态）
-    if(sim.runAnim){
-        sim.carriers.forEach(c => {
-            // 更新位置
-            c.x += c.vx * sim.aSpeed;
-            c.y += c.vy * sim.aSpeed;
-            // 边界反弹
-            if(c.x < pad || c.x > w-pad) c.vx *= -1;
-            if(c.y < pad || c.y > h-pad) c.vy *= -1;
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = "12px Microsoft Yahei";
+    ctx.fillText("电压 (V)", w-70, h-15);
+    ctx.fillText("电流(mA) / 光强(cd)", 10, 25);
 
-            // 粒子外发光
-            const glow = ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,8);
-            if(c.type === 'e'){
-                glow.addColorStop(0,'rgba(41,147,237,0.8)');
-                glow.addColorStop(1,'rgba(41,147,237,0)');
-            }else{
-                glow.addColorStop(0,'rgba(236,71,71,0.8)');
-                glow.addColorStop(1,'rgba(236,71,71,0)');
-            }
-            ctx.fillStyle = glow;
-            ctx.beginPath();
-            ctx.arc(c.x,c.y,8,0,Math.PI*2);
-            ctx.fill();
-
-            // 粒子核心
-            ctx.fillStyle = c.type === 'e' ? '#2993ed' : '#ec4747';
-            ctx.beginPath();
-            ctx.arc(c.x,c.y,4,0,Math.PI*2);
-            ctx.fill();
-        });
+    // X刻度
+    for(let xVal=0;xVal<=X_MAX;xVal+=1){
+        let x = padding + (xVal/X_MAX)*(w-padding*2);
+        ctx.beginPath();
+        ctx.moveTo(x, h-padding);
+        ctx.lineTo(x, h-padding+5);
+        ctx.stroke();
+        ctx.fillText(xVal.toString(), x-6, h-padding+18);
     }
-}
+    // Y刻度
+    for(let yVal=0;yVal<=Y_MAX;yVal+=10){
+        let y = h-padding - (yVal/Y_MAX)*(h-padding*2);
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(padding-5, y);
+        ctx.stroke();
+        ctx.fillText(yVal.toString(), padding-25, y+4);
+    }
 
-// 动画循环
-function animLoop() {
-    if(!sim.runAnim) return;
-    renderFull();
-    requestAnimationFrame(animLoop);
-}
+    // 图例
+    ctx.fillStyle = "#3498db";
+    ctx.fillRect(padding+20, padding+10,12,12);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText("I-V 电流曲线", padding+40, padding+20);
+    ctx.fillStyle = "#f39c12";
+    ctx.fillRect(padding+140, padding+10,12,12);
+    ctx.fillText("L-I 光强曲线", padding+160, padding+20);
 
-// ========== 全局事件监听：所有参数变更 → 立即重绘全图 ==========
-matSelect.addEventListener('change', () => {
-    sim.mat = matSelect.value;
-    spawnCarriers();
-    renderFull();
-});
+    const points = [];
+    for(let v=0;v<=simParam.voltage;v+=0.05){
+        points.push(calcPoint(v));
+    }
+    if(points.length<2) return;
 
-tempSlider.addEventListener('input', () => {
-    sim.T = +tempSlider.value;
-    tempVal.textContent = sim.T;
-    renderFull();
-});
-
-dopeSlider.addEventListener('input', () => {
-    const p = +dopeSlider.value;
-    sim.dop = Math.pow(10, p);
-    dopeVal.textContent = `1e${p}`;
-    renderFull();
-});
-
-dopeType.addEventListener('change', () => {
-    sim.type = dopeType.value;
-    renderFull();
-});
-
-energySlider.addEventListener('input', () => {
-    sim.eRange = +energySlider.value;
-    energyVal.textContent = sim.eRange.toFixed(1);
-    spawnCarriers();
-    renderFull();
-});
-
-speedSlider.addEventListener('input', () => {
-    sim.aSpeed = +speedSlider.value;
-    speedVal.textContent = `${sim.aSpeed.toFixed(1)}x`;
-});
-
-fluctSlider.addEventListener('input', () => {
-    sim.fluct = +fluctSlider.value;
-    fluctVal.textContent = sim.fluct.toFixed(1);
-    // 热波动直接刷新粒子运动幅度
-    sim.carriers.forEach(c => {
-        c.vx = (Math.random()-0.5)*sim.fluct*2;
-        c.vy = (Math.random()-0.5)*sim.fluct*2;
+    // 电流曲线
+    ctx.strokeStyle = '#3498db';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach((pt,idx)=>{
+        let x = padding + (pt.v/X_MAX)*(w-padding*2);
+        let y = h-padding - (Math.min(pt.i,Y_MAX)/Y_MAX)*(h-padding*2);
+        idx===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
     });
-    renderFull();
-});
+    ctx.stroke();
 
-animBtn.addEventListener('click', () => {
-    sim.runAnim = !sim.runAnim;
-    animBtn.textContent = sim.runAnim ? 'Pause Animation' : 'Start Animation';
-    if(sim.runAnim){
-        spawnCarriers();
-        animLoop();
+    // 光强曲线
+    ctx.strokeStyle = '#f39c12';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach((pt,idx)=>{
+        let x = padding + (pt.v/X_MAX)*(w-padding*2);
+        let y = h-padding - (Math.min(pt.l,Y_MAX)/Y_MAX)*(h-padding*2);
+        idx===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+}
+function drawAllChart(){
+    drawChartSingle(ch1Ctx, chart1);
+    drawChartSingle(ch2Ctx, chart2);
+    drawChartSingle(ch3Ctx, chart3);
+}
+
+// ========== 能带绘制（三态切换） ==========
+function drawBandSingle(ctx, canvas) {
+    const w = canvas.width;
+    const h = canvas.height;
+    const midY = h / 2;
+    const Eg = simParam.bandGap * 12;
+    const v = simParam.voltage;
+
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0,0,w,h);
+
+    let pShift = 0, nShift = 0, showTransition = false;
+    if (v < -0.1) {
+        pShift = -Math.abs(v)*14;
+        nShift = Math.abs(v)*14;
+    } else if (v > 0.1) {
+        pShift = v*14;
+        nShift = -v*14;
+        showTransition = true;
     }
+
+    ctx.strokeStyle = '#27ae60';
+    ctx.lineWidth = 3;
+    // P区
+    ctx.beginPath();
+    ctx.moveTo(50, midY - Eg/2 + pShift);
+    ctx.lineTo(220, midY - Eg/2 + pShift);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(50, midY + Eg/2 + pShift);
+    ctx.lineTo(220, midY + Eg/2 + pShift);
+    ctx.stroke();
+    // 中间弯曲
+    const midX = 350;
+    const bend = (pShift + nShift)/2;
+    ctx.beginPath();
+    ctx.moveTo(220, midY - Eg/2 + pShift);
+    ctx.quadraticCurveTo(midX, midY - Eg/2 + bend, 480, midY - Eg/2 + nShift);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(220, midY + Eg/2 + pShift);
+    ctx.quadraticCurveTo(midX, midY + Eg/2 + bend, 480, midY + Eg/2 + nShift);
+    ctx.stroke();
+    // N区
+    ctx.beginPath();
+    ctx.moveTo(480, midY - Eg/2 + nShift);
+    ctx.lineTo(650, midY - Eg/2 + nShift);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(480, midY + Eg/2 + nShift);
+    ctx.lineTo(650, midY + Eg/2 + nShift);
+    ctx.stroke();
+
+    // 跃迁箭头
+    if(showTransition){
+        ctx.strokeStyle = '#f39c12';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(midX, midY + Eg/2 + bend);
+        ctx.lineTo(midX, midY - Eg/2 + bend);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // 文字
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = "12px Microsoft Yahei";
+    ctx.fillText("P区", 80, midY - Eg/2 + pShift - 8);
+    ctx.fillText("发光层(辐射复合)", 280, midY - Eg/2 + bend - 8);
+    ctx.fillText("N区", 550, midY - Eg/2 + nShift - 8);
+    if(showTransition) ctx.fillText("电子跃迁→释放光子", midX-75, midY + Eg/2 + bend + 30);
+    ctx.fillText(`当前：${getBiasStatus(v)}`, 40, h-20);
+}
+function drawAllBand(){
+    drawBandSingle(b1Ctx, band1);
+    drawBandSingle(b2Ctx, band2);
+    drawBandSingle(b3Ctx);
+}
+
+// ========== Tab 切换事件 ==========
+tabItems.forEach((item, index) => {
+    item.addEventListener('click', () => {
+        // 清除所有激活状态
+        tabItems.forEach(t => t.classList.remove('active'));
+        tabPanels.forEach(p => p.classList.remove('active'));
+        // 激活当前
+        item.classList.add('active');
+        tabPanels[index].classList.add('active');
+    });
 });
 
-resetBtn.addEventListener('click', () => {
-    // 重置控件
-    matSelect.value = 'Si';
-    tempSlider.value = 300;
-    dopeSlider.value = 15;
-    dopeType.value = 'n';
-    energySlider.value = 2.0;
-    speedSlider.value = 1.0;
-    fluctSlider.value = 1.0;
-    // 重置参数
-    sim = {
-        mat: 'Si', T:300, dop:1e15, type:'n',
-        eRange:2.0, aSpeed:1.0, fluct:1.0, runAnim:false, carriers:[]
-    };
-    // 刷新文本
-    tempVal.textContent = '300';
-    dopeVal.textContent = '1e15';
-    energyVal.textContent = '2.0';
-    speedVal.textContent = '1.0x';
-    fluctVal.textContent = '1.0';
-    animBtn.textContent = 'Start Animation';
-
-    spawnCarriers();
-    renderFull();
+// ========== 滑块 & 按钮事件 ==========
+voltSlider.addEventListener('input', function(){
+    simParam.voltage = parseFloat(this.value);
+    voltValue.innerText = this.value;
+    calcSimulation();
+});
+bandSlider.addEventListener('input', function(){
+    simParam.bandGap = parseFloat(this.value);
+    bandValue.innerText = this.value;
+    calcSimulation();
+});
+tempSlider.addEventListener('input', function(){
+    simParam.temp = parseInt(this.value);
+    tempValue.innerText = this.value;
+    calcSimulation();
+});
+mobilityESlider.addEventListener('input', function(){
+    simParam.mobilityE = Number(this.value);
+    mobilityEValue.innerText = this.value;
+    calcSimulation();
+});
+dopingSlider.addEventListener('input', function(){
+    simParam.doping = Number(this.value);
+    dopingValue.innerText = this.value;
+    calcSimulation();
 });
 
-// 初始化
-resizeCanvas();
-spawnCarriers();
-renderFull();
+// 重置
+resetBtn.addEventListener('click', function(){
+    simParam.voltage = 2.0;
+    simParam.bandGap = 1.8;
+    simParam.temp = 25;
+    simParam.mobilityE = 600;
+    simParam.doping = 10;
+
+    voltSlider.value = 2.0;
+    bandSlider.value = 1.8;
+    tempSlider.value = 25;
+    mobilityESlider.value = 600;
+    dopingSlider.value = 10;
+
+    voltValue.innerText = "2.0";
+    bandValue.innerText = "1.8";
+    tempValue.innerText = "25";
+    mobilityEValue = "600";
+    dopingValue = "600";
+
+    carriers1 = []; carriers2 = []; carriers3 = [];
+    calcSimulation();
+});
+
+// 启停动画
+toggleAnim.addEventListener('click', function(){
+    simParam.isAnimRun = !simParam.isAnimRun;
+    this.innerText = simParam.isAnimRun ? "停止动画" : "启动动画";
+    updateLedEffect();
+});
+
+// 导出数据
+exportBtn.addEventListener('click', function(){
+    let dataStr = "LED偏置切换仿真数据\n";
+    dataStr += "电压(V),禁带宽度(eV),温度(℃),电子迁移率,掺杂浓度(10^18cm-3),电流(mA),波长(nm),光强(cd),热损耗(%)\n";
+    dataStr += `${simParam.voltage},${simParam.bandGap},${simParam.temp},${simParam.mobilityE},${simParam.doping},${simParam.current},${simParam.wavelength},${simParam.lightIntensity},${simParam.heatLoss}\n`;
+
+    let blob = new Blob([dataStr], {type: "text/plain"});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    a.href = url;
+    a.download = "LED仿真数据.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// ========== 页面初始化 ==========
+window.onload = function(){
+    calcSimulation();
+    // 启动三组载流子动画
+    animateCarrier(c1Ctx, carrier1, carriers1);
+    animateCarrier(c2Ctx, carrier2, carriers2);
+    animateCarrier(c3Ctx, carrier3, carriers3);
+}
