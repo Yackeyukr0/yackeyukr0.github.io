@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Density of States | Advanced Simulation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- 左侧可视化绘图区 -->
+        <div class="view-container">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+
+        <!-- 右侧高端控制面板 -->
+        <div class="control-shell">
+            <div class="control-header">
+                <h2>Simulation Controls</h2>
+            </div>
+
+            <div class="control-group">
+                <label>Semiconductor Material</label>
+                <select id="matSelect">
+                    <option value="Si">Silicon (Si)</option>
+                    <option value="GaAs">Gallium Arsenide (GaAs)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Temperature (K)</label>
+                    <span class="val-tag" id="tempVal">300</span>
+                </div>
+                <input type="range" id="tempSlider" min="100" max="600" value="300" step="10">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Doping Concentration (cm⁻³)</label>
+                    <span class="val-tag" id="dopeVal">1e15</span>
+                </div>
+                <input type="range" id="dopeSlider" min="14" max="18" value="15" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>Doping Type</label>
+                <select id="dopeType">
+                    <option value="n">N-type (Donor)</option>
+                    <option value="p">P-type (Acceptor)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Energy Range (eV)</label>
+                    <span class="val-tag" id="energyVal">2.0</span>
+                </div>
+                <input type="range" id="energySlider" min="1.0" max="4.0" value="2.0" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Animation Speed</label>
+                    <span class="val-tag" id="speedVal">1.0x</span>
+                </div>
+                <input type="range" id="speedSlider" min="0.1" max="3.0" value="1.0" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Thermal Fluctuation</label>
+                    <span class="val-tag" id="fluctVal">1.0</span>
+                </div>
+                <input type="range" id="fluctSlider" min="0" max="2.0" value="1.0" step="0.1">
+            </div>
+
+            <div class="btn-group">
+                <button id="animBtn" class="btn primary">Start Animation</button>
+                <button id="resetBtn" class="btn secondary">Reset All</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
