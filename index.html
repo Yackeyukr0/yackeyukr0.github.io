@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LED 交互式仿真 · 统一动态视图</title>
+    <title>LED 仿真 · 优化版（迁移率敏感）</title>
     <style>
         /* ========== 全局重置 & 主题 ========== */
         * {
@@ -568,6 +568,32 @@
             max-width: 100%;
         }
 
+        /* ========== 能带图下方说明 ========== */
+        .band-legend {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #cbd5e1;
+            flex-wrap: wrap;
+        }
+        .band-legend .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .band-legend .line-sample {
+            width: 28px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        .band-legend .line-sample.dashed {
+            height: 0;
+            border-top: 3px dashed #ff6b6b;
+            width: 28px;
+        }
+
         /* ========== 响应式 ========== */
         @media (max-width: 1024px) {
             .main-container {
@@ -607,9 +633,12 @@
             .control-sidebar {
                 padding: 12px;
             }
+            .band-legend {
+                gap: 14px;
+                font-size: 11px;
+            }
         }
 
-        /* 故障闪烁 */
         .fault-flash {
             animation: faultBlink 0.3s ease 3;
         }
@@ -627,8 +656,8 @@
 <body>
     <!-- ========== 顶部标题 ========== -->
     <header class="page-header">
-        <h1>⚡ LED 交互式仿真 · 统一动态视图</h1>
-        <p>电压连续调节 · 所有偏置状态无缝过渡 · 预设快捷跳转</p>
+        <h1>⚡ LED 仿真 · 优化版（迁移率敏感）</h1>
+        <p>迁移率下降 → 光子急剧减少 · 消除保底常数 · 参数变化更直观</p>
     </header>
 
     <div class="main-container">
@@ -636,18 +665,16 @@
         <aside class="control-sidebar">
             <div class="control-title">🎛️ 控制面板</div>
 
-            <!-- 预设材料快速切换 -->
             <div class="control-group">
                 <div class="group-title">📌 预设材料</div>
                 <div class="preset-row">
-                    <button class="preset-btn" data-eg="1.8" data-color="#ef4444">红光 1.8eV</button>
-                    <button class="preset-btn" data-eg="2.2" data-color="#22c55e">绿光 2.2eV</button>
-                    <button class="preset-btn" data-eg="2.7" data-color="#3b82f6">蓝光 2.7eV</button>
-                    <button class="preset-btn" data-eg="3.0" data-color="#a855f7">紫光 3.0eV</button>
+                    <button class="preset-btn" data-eg="1.8">红光 1.8eV</button>
+                    <button class="preset-btn" data-eg="2.2">绿光 2.2eV</button>
+                    <button class="preset-btn" data-eg="2.7">蓝光 2.7eV</button>
+                    <button class="preset-btn" data-eg="3.0">紫光 3.0eV</button>
                 </div>
             </div>
 
-            <!-- 电压 -->
             <div class="control-group">
                 <div class="group-title">⚡ 工作电压 (V)</div>
                 <div class="control-item">
@@ -656,7 +683,6 @@
                 </div>
             </div>
 
-            <!-- 材料参数 -->
             <div class="control-group">
                 <div class="group-title">🧪 半导体材料</div>
                 <div class="control-item">
@@ -673,7 +699,6 @@
                 </div>
             </div>
 
-            <!-- 温度 -->
             <div class="control-group">
                 <div class="group-title">🌡️ 环境温度</div>
                 <div class="control-item">
@@ -682,7 +707,6 @@
                 </div>
             </div>
 
-            <!-- 功能控制 -->
             <div class="control-group">
                 <div class="group-title">🎮 功能控制</div>
                 <div class="btn-row">
@@ -695,7 +719,6 @@
                 </div>
             </div>
 
-            <!-- 实验任务 -->
             <div class="control-group">
                 <div class="group-title">🧪 实验任务</div>
                 <select id="experiment-select" style="width:100%;padding:6px;border-radius:6px;background:#2a3448;color:#e6edf7;border:1px solid #4a5a7a;">
@@ -711,7 +734,6 @@
                 <div id="experiment-status" style="font-size:12px;color:#94a3b8;margin-top:4px;">就绪</div>
             </div>
 
-            <!-- 数据导出 -->
             <div class="control-group">
                 <div class="group-title">💾 数据操作</div>
                 <div class="btn-row">
@@ -720,7 +742,6 @@
                 </div>
             </div>
 
-            <!-- 实时数据 + 效率 -->
             <div class="data-group">
                 <div class="group-title">📊 实时数据 & 效率</div>
                 <div class="data-line"><span class="label">工作电流</span> <span id="current-data">0</span> mA</div>
@@ -744,10 +765,10 @@
             <div class="control-group">
                 <div class="group-title">📖 使用说明</div>
                 <div class="help-text">
-                    • 顶部快捷预设：一键跳转典型偏置<br>
-                    • 拖动电压滑块连续调节，所有视图同步更新<br>
-                    • 材料、温度实时影响发光特性<br>
-                    • 故障模拟、实验任务、数据导出功能完备
+                    • <b>迁移率</b> → 主导电流和光子数量（已优化灵敏度）<br>
+                    • <b>掺杂浓度</b> → 影响费米能级位置（能带图）<br>
+                    • <b>电压</b> → 能带弯曲 + 发光强度<br>
+                    • 拖动滑块，所有变化一目了然
                 </div>
             </div>
         </aside>
@@ -771,7 +792,7 @@
 
                 <!-- LED 结构 -->
                 <section class="sim-section">
-                    <h2 class="section-title">🧬 器件结构 & 载流子复合 <small>（实时粒子动画）</small></h2>
+                    <h2 class="section-title">🧬 器件结构 & 载流子复合 <small>（迁移率影响粒子速度 & 光子数量）</small></h2>
                     <div class="sim-content">
                         <div class="led-full-display">
                             <div class="led-package" id="package-main">
@@ -798,9 +819,15 @@
 
                 <!-- 能带图 -->
                 <section class="sim-section">
-                    <h2 class="section-title">📈 能带示意图</h2>
+                    <h2 class="section-title">📈 能带示意图 <small style="color:#ff6b6b;">红色虚线 = 费米能级 Ef（随掺杂浓度变化）</small></h2>
                     <div class="sim-content">
-                        <canvas id="band-main" width="750" height="160"></canvas>
+                        <canvas id="band-main" width="750" height="180"></canvas>
+                        <div class="band-legend">
+                            <span class="item"><span class="line-sample" style="background:#3b82f6;"></span> 导带底 Ec</span>
+                            <span class="item"><span class="line-sample" style="background:#22c55e;"></span> 价带顶 Ev</span>
+                            <span class="item"><span class="line-sample dashed"></span> 费米能级 Ef</span>
+                            <span class="item" style="color:#facc15;">⬆ 掺杂↑ → Ef 向带边靠近</span>
+                        </div>
                     </div>
                 </section>
 
@@ -817,7 +844,13 @@
 
     <script>
         // =====================================================================
-        //  🚀 统一动态视图 - 单一实例，所有参数联动
+        //  🚀 优化版：迁移率敏感 · 消除保底常数 · 参数变化更明显
+        //  修改点：
+        //  1. 光子生成率：去掉 +0.1 保底，改为 (current / 20) 并提高系数
+        //  2. 粒子复合概率：增加迁移率因子，使低迁移率时复合更慢（堆积更明显）
+        //  3. 粒子生成率：提高迁移率影响权重
+        //  4. 电流计算：加强迁移率指数效应
+        //  5. 阈值检查：移除 current > 0.5 的硬门槛，让光子即使在低电流也有少量产生
         // =====================================================================
 
         // ========== 1. DOM 引用 ==========
@@ -857,9 +890,7 @@
         const stopExp = document.getElementById('stop-experiment');
         const expStatus = document.getElementById('experiment-status');
 
-        // 预设偏置按钮
         const presetBtns = document.querySelectorAll('.preset-btn-nav');
-        // 预设材料按钮
         const materialPresets = document.querySelectorAll('.preset-btn');
 
         // 主视图元素
@@ -896,7 +927,7 @@
             faultType: 'none'
         };
 
-        // ========== 3. 粒子系统（单套） ==========
+        // ========== 3. 粒子系统 ==========
         let particles = [];
         let photons = [];
 
@@ -912,9 +943,13 @@
             return "零偏置";
         }
 
+        // 电流计算：增强迁移率指数效应（平方关系）
         function calcPoint(v) {
             const tempFactor = 1 + (simParam.temp - 25) * 0.012;
-            const materialFactor = (simParam.mobilityE / 600) * (simParam.doping / 10);
+            // 迁移率因子：以600为基准，平方关系使变化更剧烈
+            const mobilityFactor = Math.pow(simParam.mobilityE / 600, 1.5);
+            const dopingFactor = simParam.doping / 10;
+            const materialFactor = mobilityFactor * dopingFactor;
             let i = 0;
             let faultLimit = 1;
             if (simParam.faultActive && simParam.faultType === 'overcurrent') faultLimit = 0.3;
@@ -969,7 +1004,6 @@
             simParam.lightIntensity = parseFloat(pt.l.toFixed(2));
             simParam.heatLoss = Math.round((simParam.temp / 120) * 100);
 
-            // 效率
             const pElec = simParam.voltage * simParam.current / 1000;
             const pOpt = simParam.lightIntensity * 0.01;
             const iqe = (simParam.current > 0.01) ? Math.min(100, (simParam.lightIntensity / (simParam.current * 0.8)) * 100) :
@@ -1007,7 +1041,6 @@
 
         function updateDescAndProgress() {
             const v = simParam.voltage;
-            const status = getBiasStatus(v);
             const expText = simParam.faultActive ? '⚠️ 故障' : '就绪';
             expIndicator.innerText = expText;
 
@@ -1040,6 +1073,7 @@
             const isFault = simParam.faultActive;
 
             if (v >= V_ON && simParam.isAnimRun && !isFault) {
+                // 发光强度与电流成正比，但增加迁移率影响（电流已经包含）
                 const intensity = Math.min(1, simParam.current / 30) * breath;
                 const alpha = 0.3 + 0.7 * intensity;
                 const r = parseInt(color.slice(1, 3), 16);
@@ -1083,17 +1117,19 @@
             }
         }
 
-        // ========== 7. 粒子动画（单套） ==========
+        // ========== 7. 粒子动画（迁移率影响速度 + 复合概率） ==========
         function spawnParticle() {
             const v = simParam.voltage;
             const isForward = v >= V_ON;
             const isZero = v >= -0.1 && v <= 0.1;
             const isReverse = v < -0.1;
             const fault = simParam.faultActive;
+            const mobilityFactor = simParam.mobilityE / 600;
 
+            // 粒子生成率：迁移率因子平方，增强灵敏度
             let rate = 0;
             if (isForward && !fault) {
-                rate = 0.4 + (simParam.current / 20) * (simParam.doping / 10) * (simParam.mobilityE / 600);
+                rate = 0.2 + 0.6 * Math.pow(mobilityFactor, 1.5) * (simParam.doping / 10);
             } else if (isZero) {
                 rate = 0.05;
             } else if (isReverse) {
@@ -1105,15 +1141,19 @@
                 const fromP = Math.random() < 0.5;
                 const x = fromP ? 20 + Math.random() * 30 : 190 + Math.random() * 30;
                 const y = 20 + Math.random() * 50;
-                const vx = fromP ? (1.2 + Math.random() * 1.5) : (-1.2 - Math.random() * 1.5);
+                // 速度与迁移率成正比
+                const baseSpeed = 1.0 + 2.0 * mobilityFactor;
+                const vx = fromP ? (baseSpeed + Math.random() * 0.8) : (-baseSpeed - Math.random() * 0.8);
                 const vy = (Math.random() - 0.5) * 0.8;
                 const size = 3 + Math.random() * 3;
                 const type = fromP ? 'hole' : 'electron';
                 particles.push({ x, y, vx, vy, size, type, life: 1, maxLife: 100 + Math.random() * 150 });
             }
 
-            if (isForward && simParam.isAnimRun && simParam.current > 0.5 && !fault) {
-                const photonRate = 0.1 + simParam.current / 50;
+            // ---- 光子生成（消除保底常数，完全由电流驱动） ----
+            if (isForward && simParam.isAnimRun && !fault) {
+                // 光子生成率与电流成正比，且加入迁移率影响
+                const photonRate = simParam.current / 15; // 去掉 +0.1，放大系数
                 if (Math.random() < photonRate) {
                     const wave = simParam.wavelength;
                     const color = getEmissionColor(wave, 0.9);
@@ -1138,17 +1178,23 @@
             const isForward = v >= V_ON;
             const isReverse = v < -0.1;
             const fault = simParam.faultActive;
+            const mobilityFactor = simParam.mobilityE / 600;
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 if (isReverse) {
                     p.vx += (p.x < 120 ? -0.05 : 0.05);
                 } else if (isForward && !fault) {
-                    p.vx += (p.x < 120 ? 0.03 : -0.03);
+                    // 迁移率影响电场加速
+                    const accel = 0.03 * mobilityFactor;
+                    p.vx += (p.x < 120 ? accel : -accel);
                 }
-                p.vx += (Math.random() - 0.5) * 0.08;
-                p.vy += (Math.random() - 0.5) * 0.08;
-                const maxSpeed = isForward ? 3.5 : 1.2;
+                // 热运动噪声与迁移率相关
+                const thermalNoise = 0.05 + 0.05 * mobilityFactor;
+                p.vx += (Math.random() - 0.5) * thermalNoise;
+                p.vy += (Math.random() - 0.5) * thermalNoise;
+
+                const maxSpeed = isForward ? (1.5 + 2.5 * mobilityFactor) : 1.2;
                 const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
                 if (sp > maxSpeed) { p.vx = (p.vx / sp) * maxSpeed;
                     p.vy = (p.vy / sp) * maxSpeed; }
@@ -1163,8 +1209,10 @@
                 if (p.y > 85) { p.y = 85;
                     p.vy *= -0.5; }
 
+                // 复合概率：与电流和迁移率相关（迁移率低，复合概率低，堆积更明显）
+                const recombinationProb = 0.01 + 0.03 * (simParam.current / 10) * mobilityFactor;
                 if (p.x > 100 && p.x < 140 && isForward && simParam.isAnimRun && !fault) {
-                    if (Math.random() < 0.02 + simParam.current / 200) {
+                    if (Math.random() < recombinationProb) {
                         const wave = simParam.wavelength;
                         const color = getEmissionColor(wave, 0.9);
                         for (let k = 0; k < 2; k++) {
@@ -1191,6 +1239,7 @@
                 }
             }
 
+            // 更新光子（生命周期）
             for (let i = photons.length - 1; i >= 0; i--) {
                 const ph = photons[i];
                 ph.x += ph.vx;
@@ -1202,8 +1251,9 @@
                     photons.splice(i, 1);
                 }
             }
-            if (particles.length > 200) particles.splice(0, particles.length - 200);
-            if (photons.length > 150) photons.splice(0, photons.length - 150);
+            // 限制数量
+            if (particles.length > 300) particles.splice(0, particles.length - 300);
+            if (photons.length > 200) photons.splice(0, photons.length - 200);
         }
 
         function drawParticles() {
@@ -1386,7 +1436,7 @@
 
         function drawAllChart() { drawChartSingle(); }
 
-        // ========== 10. 能带绘制 ==========
+        // ========== 10. 能带图 ==========
         function drawBandSingle() {
             const ctx = bandCtx;
             const canvas = bandCanvas;
@@ -1396,6 +1446,7 @@
             const egEff = getEffectiveBandGap();
             const Eg = egEff * 12;
             const v = simParam.voltage;
+            const doping = simParam.doping;
 
             ctx.clearRect(0, 0, w, h);
             ctx.fillStyle = '#101824';
@@ -1409,42 +1460,97 @@
                 nShift = -v * 14;
                 showTransition = true; }
 
-            ctx.strokeStyle = '#27ae60';
-            ctx.lineWidth = 3;
+            const midX = 350;
+            const bend = (pShift + nShift) / 2;
+
+            // Ec, Ev
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(50, midY - Eg / 2 + pShift);
             ctx.lineTo(220, midY - Eg / 2 + pShift);
             ctx.stroke();
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(50, midY + Eg / 2 + pShift);
             ctx.lineTo(220, midY + Eg / 2 + pShift);
             ctx.stroke();
 
-            const midX = 350,
-                bend = (pShift + nShift) / 2;
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(220, midY - Eg / 2 + pShift);
             ctx.quadraticCurveTo(midX, midY - Eg / 2 + bend, 480, midY - Eg / 2 + nShift);
             ctx.stroke();
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(220, midY + Eg / 2 + pShift);
             ctx.quadraticCurveTo(midX, midY + Eg / 2 + bend, 480, midY + Eg / 2 + nShift);
             ctx.stroke();
 
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(480, midY - Eg / 2 + nShift);
             ctx.lineTo(650, midY - Eg / 2 + nShift);
             ctx.stroke();
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(480, midY + Eg / 2 + nShift);
             ctx.lineTo(650, midY + Eg / 2 + nShift);
             ctx.stroke();
 
-            if (showTransition && simParam.isAnimRun && simParam.current > 0.5 && !simParam.faultActive) {
+            // Ef
+            const Ec_mid = midY - Eg / 2 + bend;
+            const Ev_mid = midY + Eg / 2 + bend;
+            const dopingFactor = Math.max(0, (20 - doping) / 20);
+            const efOffset = 0.35 * dopingFactor;
+            const efOffsetPx = efOffset * 12;
+            const Ef_y = (Ec_mid + Ev_mid) / 2 + efOffsetPx * 0.6;
+
+            ctx.setLineDash([6, 5]);
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(50, Ef_y);
+            ctx.lineTo(650, Ef_y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#ff6b6b';
+            ctx.font = "bold 13px Microsoft Yahei";
+            ctx.fillText("Ef", 660, Ef_y - 4);
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = "11px Microsoft Yahei";
+            const labelY = Ef_y > midY ? Ef_y - 22 : Ef_y + 22;
+            ctx.fillText(`掺杂浓度 N = ${doping} × 10¹⁸ cm⁻³`, 50, labelY);
+
+            // 标注距离
+            const Ev_p = midY + Eg / 2 + pShift;
+            const Ef_p_dist = (Ef_y - Ev_p) / 12;
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = "11px Microsoft Yahei";
+            ctx.fillText(`Ef - Ev = ${Math.max(0, Ef_p_dist.toFixed(2))} eV`, 20, Ev_p + 30);
+            const Ec_n = midY - Eg / 2 + nShift;
+            const Ef_n_dist = (Ec_n - Ef_y) / 12;
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = "11px Microsoft Yahei";
+            ctx.fillText(`Ec - Ef = ${Math.max(0, Ef_n_dist.toFixed(2))} eV`, 580, Ec_n - 12);
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = "11px Microsoft Yahei";
+            ctx.fillText("⬆ 掺杂↑ → Ef 向带边靠近", 640, 28);
+
+            // 跃迁箭头
+            if (showTransition && simParam.isAnimRun && simParam.current > 0.1 && !simParam.faultActive) {
                 const wave = simParam.wavelength;
                 const color = getEmissionColorHex(wave);
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 2.5;
+                ctx.lineWidth = 2;
                 ctx.setLineDash([4, 6]);
                 const arrowY = midY + Eg / 2 + bend;
                 const blink = 0.6 + 0.4 * Math.sin(frameCount * 0.05);
@@ -1474,16 +1580,17 @@
 
             ctx.fillStyle = '#94a3b8';
             ctx.font = "12px Microsoft Yahei";
-            ctx.fillText("P 区", 80, midY - Eg / 2 + pShift - 8);
-            ctx.fillText("发光层", 290, midY - Eg / 2 + bend - 8);
-            ctx.fillText("N 区", 550, midY - Eg / 2 + nShift - 8);
+            ctx.fillText("P 区", 80, midY - Eg / 2 + pShift - 14);
+            ctx.fillText("发光层", 290, midY - Eg / 2 + bend - 14);
+            ctx.fillText("N 区", 550, midY - Eg / 2 + nShift - 14);
+
             ctx.fillStyle = '#4a5a7a';
             ctx.font = "11px Microsoft Yahei";
-            ctx.fillText(`状态: ${getBiasStatus(v)}`, 40, h - 20);
-            ctx.fillText(`Eg(eff) = ${egEff.toFixed(2)} eV`, 40, h - 5);
-            if (showTransition && simParam.current > 0.5) {
+            ctx.fillText(`状态: ${getBiasStatus(v)}  |  Eg(eff) = ${egEff.toFixed(2)} eV  |  μ = ${simParam.mobilityE} cm²/(V·s)`, 40,
+                h - 8);
+            if (showTransition && simParam.current > 0.1) {
                 ctx.fillStyle = '#fbbf24';
-                ctx.fillText(`λ = ${simParam.wavelength} nm`, w - 120, h - 5);
+                ctx.fillText(`λ = ${simParam.wavelength} nm`, w - 120, h - 8);
             }
         }
 
@@ -1507,9 +1614,7 @@
             const v = parseFloat(this.value);
             simParam.voltage = v;
             voltValue.innerText = v.toFixed(2);
-            // 取消预设高亮
             presetBtns.forEach(b => b.classList.remove('active'));
-            // 如果电压接近预设值，可以高亮对应按钮（可选）
             calcSimulation();
         });
 
@@ -1617,7 +1722,9 @@
                     light: simParam.lightIntensity,
                     wavelength: simParam.wavelength,
                     bandGap: simParam.bandGap,
-                    temp: simParam.temp
+                    temp: simParam.temp,
+                    doping: simParam.doping,
+                    mobility: simParam.mobilityE
                 };
                 experimentData.push(record);
                 expStep++;
@@ -1643,13 +1750,15 @@
 
         // ========== 16. 导出 CSV ==========
         exportCsv.addEventListener('click', function() {
-            let header = '电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),热损耗(%),IQE(%),EQE(%),WPE(%)\n';
+            let header =
+                '电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),掺杂浓度(×10¹⁸),迁移率(cm²/(V·s)),热损耗(%),IQE(%),EQE(%),WPE(%)\n';
             let row =
-                `${simParam.voltage.toFixed(2)},${simParam.current},${simParam.lightIntensity},${simParam.wavelength},${simParam.bandGap.toFixed(2)},${simParam.temp},${simParam.heatLoss},${iqeData.innerText},${eqeData.innerText},${wpeData.innerText}\n`;
+                `${simParam.voltage.toFixed(2)},${simParam.current},${simParam.lightIntensity},${simParam.wavelength},${simParam.bandGap.toFixed(2)},${simParam.temp},${simParam.doping},${simParam.mobilityE},${simParam.heatLoss},${iqeData.innerText},${eqeData.innerText},${wpeData.innerText}\n`;
             if (experimentData.length > 0) {
-                header = '步骤,电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃)\n';
+                header =
+                    '步骤,电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),掺杂浓度(×10¹⁸),迁移率(cm²/(V·s))\n';
                 row = experimentData.map((d, i) =>
-                    `${i+1},${d.voltage.toFixed(2)},${d.current.toFixed(2)},${d.light.toFixed(2)},${d.wavelength},${d.bandGap.toFixed(2)},${d.temp}`
+                    `${i+1},${d.voltage.toFixed(2)},${d.current.toFixed(2)},${d.light.toFixed(2)},${d.wavelength},${d.bandGap.toFixed(2)},${d.temp},${d.doping},${d.mobility}`
                 ).join('\n');
             }
             const content = header + row;
@@ -1657,7 +1766,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'LED仿真数据_统一视图.csv';
+            a.download = 'LED仿真数据_优化版.csv';
             a.click();
             URL.revokeObjectURL(url);
         });
@@ -1666,23 +1775,22 @@
         exportScreenshot.addEventListener('click', function() {
             const c = document.createElement('canvas');
             const w = 750,
-                h = 160 + 260 + 40;
+                h = 180 + 260 + 40;
             c.width = w;
             c.height = h;
             const ctx = c.getContext('2d');
             ctx.fillStyle = '#101824';
             ctx.fillRect(0, 0, w, h);
-            // 绘制能带和曲线
-            ctx.drawImage(bandCanvas, 0, 0, w, 160);
-            ctx.drawImage(chartCanvas, 0, 160 + 20, w, 260);
+            ctx.drawImage(bandCanvas, 0, 0, w, 180);
+            ctx.drawImage(chartCanvas, 0, 180 + 20, w, 260);
             ctx.fillStyle = '#72c8ff';
             ctx.font = '16px Microsoft Yahei';
-            ctx.fillText('LED 仿真数据截图 (统一视图)', 20, 30);
+            ctx.fillText('LED 仿真数据 (优化版)', 20, 30);
             ctx.fillStyle = '#94a3b8';
             ctx.font = '12px Microsoft Yahei';
-            ctx.fillText(`时间: ${new Date().toLocaleString()}`, 20, 50);
+            ctx.fillText(`时间: ${new Date().toLocaleString()}  |  迁移率: ${simParam.mobilityE} cm²/(V·s)`, 20, 50);
             const link = document.createElement('a');
-            link.download = 'LED仿真截图_统一视图.png';
+            link.download = 'LED仿真截图_优化版.png';
             link.href = c.toDataURL('image/png');
             link.click();
         });
@@ -1708,7 +1816,6 @@
             dopingValue.innerText = "10";
             materialPresets.forEach(b => b.classList.remove('active'));
             presetBtns.forEach(b => b.classList.remove('active'));
-            // 激活正向偏置预设
             document.querySelector('.preset-btn-nav[data-voltage="2.0"]').classList.add('active');
             particles = [];
             photons = [];
@@ -1730,7 +1837,6 @@
 
         // ========== 19. 初始化 ==========
         window.onload = function() {
-            // 默认激活正向偏置预设
             document.querySelector('.preset-btn-nav[data-voltage="2.0"]').classList.add('active');
             calcSimulation();
             animationLoop();
@@ -1741,6 +1847,5 @@
         window.addEventListener('resize', () => { drawAllChart();
             drawAllBand(); });
     </script>
-
 </body>
 </html>
