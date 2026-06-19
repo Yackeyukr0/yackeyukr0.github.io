@@ -3,668 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LED 仿真 · 优化版（迁移率敏感）</title>
+    <title>LED 仿真 · 完整增强版（温度可视化+效率曲线）</title>
     <style>
-        /* ========== 全局重置 & 主题 ========== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Microsoft Yahei", "PingFang SC", sans-serif;
-        }
-
-        body {
-            background-color: #0f131f;
-            color: #e6edf7;
-        }
-
-        /* ========== 顶部标题 ========== */
-        .page-header {
-            background: linear-gradient(135deg, #1a2332, #202736);
-            text-align: center;
-            padding: 18px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-        }
-        .page-header h1 {
-            font-size: 26px;
-            color: #72c8ff;
-            letter-spacing: 2px;
-        }
-        .page-header p {
-            font-size: 14px;
-            opacity: 0.7;
-            margin-top: 4px;
-        }
-
-        /* ========== 主布局 ========== */
-        .main-container {
-            display: flex;
-            max-width: 1700px;
-            margin: 20px auto;
-            gap: 20px;
-            padding: 0 15px;
-        }
-
-        /* ========== 左侧控制面板 ========== */
-        .control-sidebar {
-            width: 320px;
-            background-color: #1a2332;
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-            position: sticky;
-            top: 20px;
-            height: fit-content;
-            flex-shrink: 0;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-        }
-        .control-sidebar::-webkit-scrollbar {
-            width: 4px;
-        }
-        .control-sidebar::-webkit-scrollbar-thumb {
-            background: #3a4456;
-            border-radius: 4px;
-        }
-
-        .control-title {
-            font-size: 18px;
-            color: #72c8ff;
-            text-align: center;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #2a3448;
-            margin-bottom: 16px;
-            font-weight: bold;
-        }
-
-        .control-group {
-            background-color: #222d3e;
-            padding: 12px 14px;
-            border-radius: 8px;
-            margin-bottom: 14px;
-            border-left: 3px solid #348eda;
-        }
-        .group-title {
-            font-size: 14px;
-            color: #b0c4de;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .control-item {
-            margin-bottom: 10px;
-        }
-        .control-item label {
-            font-size: 13px;
-            display: block;
-            margin-bottom: 2px;
-            color: #cbd5e1;
-        }
-        .value-show {
-            float: right;
-            color: #ffc857;
-            font-weight: bold;
-            font-size: 13px;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            background: #2a3448;
-            border-radius: 3px;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #72c8ff;
-            cursor: pointer;
-            box-shadow: 0 0 8px rgba(114, 200, 255, 0.4);
-        }
-
-        .btn-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .ctrl-btn {
-            border: none;
-            background: #348eda;
-            color: #fff;
-            padding: 7px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-            flex: 1;
-            min-width: 60px;
-        }
-        .ctrl-btn:hover {
-            background: #2779bd;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(52, 142, 218, 0.3);
-        }
-        .ctrl-btn.warning {
-            background: #d97706;
-        }
-        .ctrl-btn.warning:hover {
-            background: #b45309;
-        }
-        .ctrl-btn.danger {
-            background: #dc2626;
-        }
-        .ctrl-btn.danger:hover {
-            background: #b91c1c;
-        }
-        .ctrl-btn.success {
-            background: #16a34a;
-        }
-        .ctrl-btn.success:hover {
-            background: #15803d;
-        }
-        .ctrl-btn.outline {
-            background: transparent;
-            border: 1px solid #4a5a7a;
-            color: #cbd5e1;
-        }
-        .ctrl-btn.outline:hover {
-            background: #2a3448;
-            border-color: #72c8ff;
-        }
-        .ctrl-btn.outline.active-preset {
-            border-color: #facc15;
-            color: #facc15;
-            background: #2a3448;
-        }
-
-        .preset-row {
-            display: flex;
-            gap: 6px;
-            margin-top: 6px;
-            flex-wrap: wrap;
-        }
-        .preset-btn {
-            flex: 1;
-            padding: 5px 0;
-            border: 1px solid #4a5a7a;
-            background: transparent;
-            color: #cbd5e1;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: 0.2s;
-            text-align: center;
-        }
-        .preset-btn:hover {
-            background: #2a3448;
-            border-color: #72c8ff;
-            color: #fff;
-        }
-        .preset-btn.active {
-            border-color: #facc15;
-            color: #facc15;
-        }
-
-        /* 数据面板 */
-        .data-group {
-            background-color: #222d3e;
-            padding: 12px 14px;
-            border-radius: 8px;
-            margin-bottom: 14px;
-            border-left: 3px solid #facc15;
-        }
-        .data-line {
-            font-size: 13px;
-            margin: 4px 0;
-            display: flex;
-            justify-content: space-between;
-        }
-        .data-line span {
-            color: #ffc857;
-            font-weight: bold;
-        }
-        .data-line .label {
-            color: #94a3b8;
-        }
-        .warning-badge {
-            background: #dc2626;
-            color: #fff;
-            padding: 0 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            animation: blink 1s infinite;
-        }
-        @keyframes blink {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.3;
-            }
-        }
-
-        .help-text {
-            font-size: 12px;
-            color: #94a3b8;
-            line-height: 1.6;
-        }
-
-        /* ========== 主视图区域 ========== */
-        .view-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-
-        /* 偏置预设快捷按钮 */
-        .preset-nav {
-            display: flex;
-            gap: 8px;
-            background-color: #1a2332;
-            padding: 10px 16px;
-            border-radius: 12px 12px 0 0;
-            margin-bottom: 2px;
-            flex-wrap: wrap;
-        }
-        .preset-nav .preset-label {
-            font-size: 14px;
-            color: #94a3b8;
-            margin-right: 10px;
-            align-self: center;
-        }
-        .preset-nav .preset-btn-nav {
-            padding: 8px 20px;
-            border: 1px solid #4a5a7a;
-            background: transparent;
-            color: #cbd5e1;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: 0.3s;
-            font-weight: 500;
-        }
-        .preset-nav .preset-btn-nav:hover {
-            background: #2a3448;
-            border-color: #72c8ff;
-        }
-        .preset-nav .preset-btn-nav.active {
-            background: #348eda;
-            border-color: #348eda;
-            color: #fff;
-            box-shadow: 0 0 16px rgba(52, 142, 218, 0.3);
-        }
-
-        .view-content {
-            background-color: #1a2332;
-            border-radius: 0 0 12px 12px;
-            padding: 16px;
-        }
-
-        .progress-bar {
-            background: #222d3e;
-            padding: 10px 16px;
-            border-radius: 8px;
-            border-left: 4px #348eda solid;
-            margin-bottom: 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .progress-text {
-            font-size: 14px;
-        }
-        .experiment-indicator {
-            font-size: 12px;
-            color: #facc15;
-            background: #2a3448;
-            padding: 2px 12px;
-            border-radius: 12px;
-        }
-
-        .sim-section {
-            background-color: #222d3e;
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        .section-title {
-            font-size: 17px;
-            color: #72c8ff;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #2a3448;
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .section-title small {
-            font-size: 13px;
-            color: #94a3b8;
-            font-weight: normal;
-        }
-
-        .sim-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* ========== LED 结构 ========== */
-        .led-full-display {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 100%;
-        }
-
-        .led-package {
-            width: 280px;
-            height: 210px;
-            border: 2px solid #4a5a7a;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.03);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-around;
-            padding: 12px;
-            position: relative;
-            transition: box-shadow 0.3s;
-        }
-        .led-package.glow {
-            box-shadow: 0 0 40px rgba(255, 200, 50, 0.1);
-        }
-
-        .electrode-top,
-        .electrode-bottom {
-            position: absolute;
-            font-size: 10px;
-            color: #94a3b8;
-            background: #1a2332;
-            padding: 0 6px;
-            border-radius: 4px;
-            border: 1px solid #3a4a5a;
-        }
-        .electrode-top {
-            top: -8px;
-            left: 20%;
-        }
-        .electrode-bottom {
-            bottom: -8px;
-            right: 20%;
-        }
-
-        .photon-area {
-            width: 110px;
-            height: 40px;
-            border-radius: 50% 50% 0 0;
-            background: rgba(255, 255, 255, 0.04);
-            text-align: center;
-            line-height: 40px;
-            font-size: 12px;
-            transition: all 0.3s;
-            position: relative;
-            z-index: 2;
-        }
-
-        .carrier-wrap {
-            position: relative;
-            width: 250px;
-            height: 94px;
-        }
-        .carrier-wrap canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 94px;
-            background: transparent;
-        }
-
-        .led-pn {
-            width: 250px;
-            height: 94px;
-            display: flex;
-            border: 2px solid #4a5a7a;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            z-index: 1;
-        }
-        .p-area {
-            width: 38%;
-            background: #5c4ed8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: bold;
-            color: #fff;
-        }
-        .light-layer {
-            width: 24%;
-            background: #4a5a7a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            transition: background 0.4s, box-shadow 0.4s;
-            color: #ddd;
-        }
-        .light-layer.active {
-            background: #fbbf24;
-            box-shadow: inset 0 0 30px rgba(251, 191, 36, 0.5);
-            color: #000;
-        }
-        .n-area {
-            width: 38%;
-            background: #1792b8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: bold;
-            color: #fff;
-        }
-
-        .substrate {
-            width: 200px;
-            height: 28px;
-            background: #2a3448;
-            border-radius: 4px;
-            text-align: center;
-            line-height: 28px;
-            font-size: 12px;
-            color: #94a3b8;
-            position: relative;
-            z-index: 2;
-        }
-
-        .photon-count,
-        .carrier-label {
-            position: absolute;
-            font-size: 10px;
-            color: #94a3b8;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 0 8px;
-            border-radius: 10px;
-            z-index: 3;
-        }
-        .photon-count {
-            top: 4px;
-            right: 6px;
-        }
-        .carrier-label {
-            bottom: 4px;
-            right: 6px;
-        }
-
-        /* LED灯体 */
-        .led-dark {
-            width: 110px;
-            height: 110px;
-            border-radius: 50%;
-            background: #111;
-            opacity: 0.2;
-        }
-        #led-main {
-            width: 110px;
-            height: 110px;
-            border-radius: 50%;
-            background: #111;
-            transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
-            position: relative;
-        }
-        #led-main::after {
-            content: '';
-            position: absolute;
-            top: -20px;
-            left: -20px;
-            right: -20px;
-            bottom: -20px;
-            border-radius: 50%;
-            background: inherit;
-            opacity: 0.25;
-            filter: blur(35px);
-            animation: pulseGlow 2s ease-in-out infinite alternate;
-            z-index: -1;
-        }
-        @keyframes pulseGlow {
-            0% {
-                transform: scale(0.7);
-                opacity: 0.1;
-            }
-            100% {
-                transform: scale(1.4);
-                opacity: 0.5;
-            }
-        }
-
-        .process-desc {
-            margin-top: 12px;
-            font-size: 14px;
-            color: #b0c4de;
-            text-align: center;
-            min-height: 24px;
-        }
-
-        /* ========== 画布 ========== */
-        canvas {
-            display: block;
-            background: #101824;
-            border-radius: 6px;
-            max-width: 100%;
-        }
-
-        /* ========== 能带图下方说明 ========== */
-        .band-legend {
-            display: flex;
-            justify-content: center;
-            gap: 28px;
-            margin-top: 10px;
-            font-size: 13px;
-            color: #cbd5e1;
-            flex-wrap: wrap;
-        }
-        .band-legend .item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .band-legend .line-sample {
-            width: 28px;
-            height: 3px;
-            border-radius: 2px;
-        }
-        .band-legend .line-sample.dashed {
-            height: 0;
-            border-top: 3px dashed #ff6b6b;
-            width: 28px;
-        }
-
-        /* ========== 响应式 ========== */
-        @media (max-width: 1024px) {
-            .main-container {
-                flex-direction: column;
-            }
-            .control-sidebar {
-                width: 100%;
-                position: static;
-                max-height: none;
-                overflow-y: visible;
-            }
-            .led-full-display {
-                flex-direction: column;
-                gap: 20px;
-            }
-        }
-        @media (max-width: 600px) {
-            .page-header h1 {
-                font-size: 18px;
-            }
-            .preset-nav .preset-btn-nav {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-            .led-package {
-                width: 100%;
-                max-width: 280px;
-            }
-            .carrier-wrap {
-                width: 100%;
-                max-width: 250px;
-            }
-            .led-pn {
-                width: 100%;
-                max-width: 250px;
-            }
-            .control-sidebar {
-                padding: 12px;
-            }
-            .band-legend {
-                gap: 14px;
-                font-size: 11px;
-            }
-        }
-
-        .fault-flash {
-            animation: faultBlink 0.3s ease 3;
-        }
-        @keyframes faultBlink {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.1;
-            }
-        }
+        /* ===== 样式（与之前相同，略作调整以容纳新画布） ===== */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft Yahei","PingFang SC",sans-serif; }
+        body { background-color:#0f131f; color:#e6edf7; }
+        .page-header { background:linear-gradient(135deg,#1a2332,#202736); text-align:center; padding:18px 20px; box-shadow:0 4px 12px rgba(0,0,0,0.6); }
+        .page-header h1 { font-size:26px; color:#72c8ff; letter-spacing:2px; }
+        .page-header p { font-size:14px; opacity:0.7; margin-top:4px; }
+        .main-container { display:flex; max-width:1700px; margin:20px auto; gap:20px; padding:0 15px; }
+        .control-sidebar { width:320px; background-color:#1a2332; border-radius:12px; padding:18px; box-shadow:0 4px 16px rgba(0,0,0,0.5); position:sticky; top:20px; height:fit-content; flex-shrink:0; max-height:calc(100vh - 40px); overflow-y:auto; }
+        .control-sidebar::-webkit-scrollbar { width:4px; }
+        .control-sidebar::-webkit-scrollbar-thumb { background:#3a4456; border-radius:4px; }
+        .control-title { font-size:18px; color:#72c8ff; text-align:center; padding-bottom:12px; border-bottom:1px solid #2a3448; margin-bottom:16px; font-weight:bold; }
+        .control-group { background-color:#222d3e; padding:12px 14px; border-radius:8px; margin-bottom:14px; border-left:3px solid #348eda; }
+        .group-title { font-size:14px; color:#b0c4de; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+        .control-item { margin-bottom:10px; }
+        .control-item label { font-size:13px; display:block; margin-bottom:2px; color:#cbd5e1; }
+        .value-show { float:right; color:#ffc857; font-weight:bold; font-size:13px; }
+        input[type="range"] { width:100%; height:6px; background:#2a3448; border-radius:3px; outline:none; -webkit-appearance:none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#72c8ff; cursor:pointer; box-shadow:0 0 8px rgba(114,200,255,0.4); }
+        .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+        .ctrl-btn { border:none; background:#348eda; color:#fff; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:13px; transition:all 0.2s; flex:1; min-width:60px; }
+        .ctrl-btn:hover { background:#2779bd; transform:translateY(-1px); box-shadow:0 0 12px rgba(52,142,218,0.3); }
+        .ctrl-btn.warning { background:#d97706; }
+        .ctrl-btn.warning:hover { background:#b45309; }
+        .ctrl-btn.danger { background:#dc2626; }
+        .ctrl-btn.danger:hover { background:#b91c1c; }
+        .ctrl-btn.success { background:#16a34a; }
+        .ctrl-btn.success:hover { background:#15803d; }
+        .preset-row { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+        .preset-btn { flex:1; padding:5px 0; border:1px solid #4a5a7a; background:transparent; color:#cbd5e1; border-radius:4px; cursor:pointer; font-size:12px; transition:0.2s; text-align:center; }
+        .preset-btn:hover { background:#2a3448; border-color:#72c8ff; color:#fff; }
+        .preset-btn.active { border-color:#facc15; color:#facc15; }
+        .data-group { background-color:#222d3e; padding:12px 14px; border-radius:8px; margin-bottom:14px; border-left:3px solid #facc15; }
+        .data-line { font-size:13px; margin:4px 0; display:flex; justify-content:space-between; }
+        .data-line span { color:#ffc857; font-weight:bold; }
+        .data-line .label { color:#94a3b8; }
+        .data-line .highlight { color:#ff6b6b; font-weight:bold; }
+        .help-text { font-size:12px; color:#94a3b8; line-height:1.6; }
+        .view-main { flex:1; display:flex; flex-direction:column; min-width:0; }
+        .preset-nav { display:flex; gap:8px; background-color:#1a2332; padding:10px 16px; border-radius:12px 12px 0 0; margin-bottom:2px; flex-wrap:wrap; }
+        .preset-nav .preset-label { font-size:14px; color:#94a3b8; margin-right:10px; align-self:center; }
+        .preset-nav .preset-btn-nav { padding:8px 20px; border:1px solid #4a5a7a; background:transparent; color:#cbd5e1; border-radius:20px; cursor:pointer; font-size:14px; transition:0.3s; font-weight:500; }
+        .preset-nav .preset-btn-nav:hover { background:#2a3448; border-color:#72c8ff; }
+        .preset-nav .preset-btn-nav.active { background:#348eda; border-color:#348eda; color:#fff; box-shadow:0 0 16px rgba(52,142,218,0.3); }
+        .view-content { background-color:#1a2332; border-radius:0 0 12px 12px; padding:16px; }
+        .progress-bar { background:#222d3e; padding:10px 16px; border-radius:8px; border-left:4px #348eda solid; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+        .progress-text { font-size:14px; }
+        .experiment-indicator { font-size:12px; color:#facc15; background:#2a3448; padding:2px 12px; border-radius:12px; }
+        .sim-section { background-color:#222d3e; padding:16px; border-radius:10px; margin-bottom:18px; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+        .section-title { font-size:17px; color:#72c8ff; padding-bottom:8px; border-bottom:1px solid #2a3448; margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .section-title small { font-size:13px; color:#94a3b8; font-weight:normal; }
+        .sim-content { display:flex; flex-direction:column; align-items:center; }
+        .led-full-display { display:flex; align-items:center; gap:40px; flex-wrap:wrap; justify-content:center; width:100%; }
+        .led-package { width:280px; height:210px; border:2px solid #4a5a7a; border-radius:16px; background:rgba(255,255,255,0.03); display:flex; flex-direction:column; align-items:center; justify-content:space-around; padding:12px; position:relative; transition:box-shadow 0.3s; }
+        .led-package.glow { box-shadow:0 0 40px rgba(255,200,50,0.1); }
+        .electrode-top, .electrode-bottom { position:absolute; font-size:10px; color:#94a3b8; background:#1a2332; padding:0 6px; border-radius:4px; border:1px solid #3a4a5a; }
+        .electrode-top { top:-8px; left:20%; }
+        .electrode-bottom { bottom:-8px; right:20%; }
+        .photon-area { width:110px; height:40px; border-radius:50% 50% 0 0; background:rgba(255,255,255,0.04); text-align:center; line-height:40px; font-size:12px; transition:all 0.3s; position:relative; z-index:2; }
+        .carrier-wrap { position:relative; width:250px; height:94px; }
+        .carrier-wrap canvas { position:absolute; top:0; left:0; width:250px; height:94px; background:transparent; }
+        .led-pn { width:250px; height:94px; display:flex; border:2px solid #4a5a7a; border-radius:8px; overflow:hidden; position:relative; z-index:1; }
+        .p-area { width:38%; background:#5c4ed8; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold; color:#fff; }
+        .light-layer { width:24%; background:#4a5a7a; display:flex; align-items:center; justify-content:center; font-size:12px; transition:background 0.4s, box-shadow 0.4s; color:#ddd; }
+        .light-layer.active { background:#fbbf24; box-shadow:inset 0 0 30px rgba(251,191,36,0.5); color:#000; }
+        .n-area { width:38%; background:#1792b8; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold; color:#fff; }
+        .substrate { width:200px; height:28px; background:#2a3448; border-radius:4px; text-align:center; line-height:28px; font-size:12px; color:#94a3b8; position:relative; z-index:2; }
+        .photon-count, .carrier-label { position:absolute; font-size:10px; color:#94a3b8; background:rgba(0,0,0,0.6); padding:0 8px; border-radius:10px; z-index:3; }
+        .photon-count { top:4px; right:6px; }
+        .carrier-label { bottom:4px; right:6px; }
+        #led-main { width:110px; height:110px; border-radius:50%; background:#111; transition:background 0.15s, box-shadow 0.15s, opacity 0.15s; position:relative; }
+        #led-main::after { content:''; position:absolute; top:-20px; left:-20px; right:-20px; bottom:-20px; border-radius:50%; background:inherit; opacity:0.25; filter:blur(35px); animation:pulseGlow 2s ease-in-out infinite alternate; z-index:-1; }
+        @keyframes pulseGlow { 0% { transform:scale(0.7); opacity:0.1; } 100% { transform:scale(1.4); opacity:0.5; } }
+        .process-desc { margin-top:12px; font-size:14px; color:#b0c4de; text-align:center; min-height:24px; }
+        canvas { display:block; background:#101824; border-radius:6px; max-width:100%; }
+        .band-legend { display:flex; justify-content:center; gap:28px; margin-top:10px; font-size:13px; color:#cbd5e1; flex-wrap:wrap; }
+        .band-legend .item { display:flex; align-items:center; gap:6px; }
+        .band-legend .line-sample { width:28px; height:3px; border-radius:2px; }
+        .band-legend .line-sample.dashed { height:0; border-top:3px dashed #ff6b6b; width:28px; }
+        .curve-container { display:flex; flex-direction:column; gap:20px; width:100%; align-items:center; }
+        .curve-row { display:flex; flex-wrap:wrap; justify-content:center; gap:20px; width:100%; }
+        @media (max-width:1024px) { .main-container { flex-direction:column; } .control-sidebar { width:100%; position:static; max-height:none; overflow-y:visible; } .led-full-display { flex-direction:column; gap:20px; } }
+        @media (max-width:600px) { .page-header h1 { font-size:18px; } .preset-nav .preset-btn-nav { padding:6px 12px; font-size:12px; } .led-package { width:100%; max-width:280px; } .carrier-wrap { width:100%; max-width:250px; } .led-pn { width:100%; max-width:250px; } .control-sidebar { padding:12px; } .band-legend { gap:14px; font-size:11px; } .curve-row { flex-direction:column; align-items:center; } }
+        .fault-flash { animation:faultBlink 0.3s ease 3; }
+        @keyframes faultBlink { 0%,100%{opacity:1;} 50%{opacity:0.1;} }
     </style>
 </head>
 <body>
-    <!-- ========== 顶部标题 ========== -->
     <header class="page-header">
-        <h1>⚡ LED 仿真 · 优化版（迁移率敏感）</h1>
-        <p>迁移率下降 → 光子急剧减少 · 消除保底常数 · 参数变化更直观</p>
+        <h1>⚡ LED 仿真 · 完整增强版（温度可视化 + 效率曲线）</h1>
+        <p>温度影响载流子数目 · IQE/EQE 曲线 · 粒子颜色随温度变化</p>
     </header>
-
     <div class="main-container">
-        <!-- ========== 左侧控制面板 ========== -->
+        <!-- 左侧控制面板（新增温度因子显示） -->
         <aside class="control-sidebar">
             <div class="control-title">🎛️ 控制面板</div>
-
             <div class="control-group">
                 <div class="group-title">📌 预设材料</div>
                 <div class="preset-row">
@@ -674,7 +109,6 @@
                     <button class="preset-btn" data-eg="3.0">紫光 3.0eV</button>
                 </div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">⚡ 工作电压 (V)</div>
                 <div class="control-item">
@@ -682,7 +116,6 @@
                     <input type="range" id="volt-slider" min="-2" max="5" step="0.05" value="2.0">
                 </div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">🧪 半导体材料</div>
                 <div class="control-item">
@@ -698,7 +131,6 @@
                     <input type="range" id="doping-slider" min="1" max="20" step="1" value="10">
                 </div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">🌡️ 环境温度</div>
                 <div class="control-item">
@@ -706,7 +138,6 @@
                     <input type="range" id="temp-slider" min="-20" max="120" step="1" value="25">
                 </div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">🎮 功能控制</div>
                 <div class="btn-row">
@@ -718,7 +149,6 @@
                     <button id="clear-fault" class="ctrl-btn success">✅ 清除故障</button>
                 </div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">🧪 实验任务</div>
                 <select id="experiment-select" style="width:100%;padding:6px;border-radius:6px;background:#2a3448;color:#e6edf7;border:1px solid #4a5a7a;">
@@ -733,7 +163,6 @@
                 </div>
                 <div id="experiment-status" style="font-size:12px;color:#94a3b8;margin-top:4px;">就绪</div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">💾 数据操作</div>
                 <div class="btn-row">
@@ -741,7 +170,7 @@
                     <button id="export-screenshot" class="ctrl-btn">🖼️ 导出截图</button>
                 </div>
             </div>
-
+            <!-- 数据面板增强：温度因子和载流子浓度 -->
             <div class="data-group">
                 <div class="group-title">📊 实时数据 & 效率</div>
                 <div class="data-line"><span class="label">工作电流</span> <span id="current-data">0</span> mA</div>
@@ -749,33 +178,46 @@
                 <div class="data-line"><span class="label">发光强度</span> <span id="light-data">0</span> cd</div>
                 <div class="data-line"><span class="label">热损耗</span> <span id="loss-data">0</span> %</div>
                 <div class="data-line"><span class="label">偏置状态</span> <span id="bias-state">正向偏置</span></div>
-                <div class="data-line"><span class="label">载流子数</span> <span id="carrier-count">0</span></div>
-                <div class="data-line" style="border-top:1px solid #2a3448;padding-top:6px;margin-top:6px;">
+                <div class="data-line" style="border-top:1px solid #2a3448;padding-top:4px;margin-top:4px;">
+                    <span class="label">载流子数</span> <span id="carrier-count">0</span>
+                </div>
+                <!-- 新增温度影响因子 -->
+                <div class="data-line" style="font-size:12px;color:#94a3b8;">
+                    <span>🌡️ 温度注入因子</span> <span id="temp-inject-factor" style="color:#ff6b6b;">1.00</span>
+                </div>
+                <div class="data-line" style="border-top:1px solid #2a3448;padding-top:4px;margin-top:4px;">
                     <span class="label">内量子效率 (IQE)</span> <span id="iqe-data">0</span> %
                 </div>
-                <div class="data-line">
-                    <span class="label">外量子效率 (EQE)</span> <span id="eqe-data">0</span> %
+                <div class="data-line"><span class="label">外量子效率 (EQE)</span> <span id="eqe-data">0</span> %</div>
+                <div class="data-line"><span class="label">电光转换效率 (WPE)</span> <span id="wpe-data">0</span> %</div>
+                <div class="data-line" style="border-top:1px dashed #2a3448;padding-top:4px;margin-top:4px;font-size:13px;">
+                    <span class="label" style="color:#ff6b6b;">🌡️ SRH温度倍率</span>
+                    <span id="srh-temp-factor" style="color:#ff6b6b;font-weight:bold;">1.00x</span>
                 </div>
-                <div class="data-line">
-                    <span class="label">电光转换效率</span> <span id="wpe-data">0</span> %
+                <div class="data-line" style="font-size:11px;color:#94a3b8;">
+                    <span>辐射复合 R_rad</span> <span id="rrad-data" style="color:#3b82f6;">0</span>
+                </div>
+                <div class="data-line" style="font-size:11px;color:#94a3b8;">
+                    <span>SRH复合 R_srh</span> <span id="rsrh-data" style="color:#dc2626;">0</span>
+                </div>
+                <div class="data-line" style="font-size:11px;color:#94a3b8;">
+                    <span>俄歇复合 R_aug</span> <span id="raug-data" style="color:#a855f7;">0</span>
                 </div>
                 <div id="fault-warning" style="display:none;color:#dc2626;font-weight:bold;margin-top:4px;">🚨 故障激活！</div>
             </div>
-
             <div class="control-group">
                 <div class="group-title">📖 使用说明</div>
                 <div class="help-text">
-                    • <b>迁移率</b> → 主导电流和光子数量（已优化灵敏度）<br>
-                    • <b>掺杂浓度</b> → 影响费米能级位置（能带图）<br>
-                    • <b>电压</b> → 能带弯曲 + 发光强度<br>
-                    • 拖动滑块，所有变化一目了然
+                    • <b>温度因子</b> 影响载流子注入效率，低温粒子多且亮<br>
+                    • <b>效率曲线</b> 显示 IQE/EQE 随电压变化<br>
+                    • <b>粒子颜色</b> 随温度变化（暖色→冷色）<br>
+                    • 拖动温度滑块，载流子数目和颜色同步响应
                 </div>
             </div>
         </aside>
 
-        <!-- ========== 主视图 ========== -->
+        <!-- 主视图 -->
         <div class="view-main">
-            <!-- 偏置预设快捷按钮 -->
             <div class="preset-nav">
                 <span class="preset-label">⚡ 快捷偏置：</span>
                 <button class="preset-btn-nav active" data-voltage="2.0">🔆 正向偏置 (2.0V)</button>
@@ -783,16 +225,14 @@
                 <button class="preset-btn-nav" data-voltage="-1.5">🔽 反向偏置 (-1.5V)</button>
                 <span style="margin-left:auto;font-size:12px;color:#94a3b8;align-self:center;">当前电压: <span id="current-voltage-display">2.00</span> V</span>
             </div>
-
             <div class="view-content">
                 <div class="progress-bar">
                     <span class="progress-text" id="progress-text">正向偏置 | 发光状态</span>
                     <span class="experiment-indicator" id="exp-indicator">就绪</span>
                 </div>
-
-                <!-- LED 结构 -->
+                <!-- 结构 -->
                 <section class="sim-section">
-                    <h2 class="section-title">🧬 器件结构 & 载流子复合 <small>（迁移率影响粒子速度 & 光子数量）</small></h2>
+                    <h2 class="section-title">🧬 器件结构 & 载流子复合 <small>（粒子颜色随温度变化）</small></h2>
                     <div class="sim-content">
                         <div class="led-full-display">
                             <div class="led-package" id="package-main">
@@ -816,7 +256,6 @@
                         <p class="process-desc" id="desc-main">正向偏置：载流子辐射复合，释放光子</p>
                     </div>
                 </section>
-
                 <!-- 能带图 -->
                 <section class="sim-section">
                     <h2 class="section-title">📈 能带示意图 <small style="color:#ff6b6b;">红色虚线 = 费米能级 Ef（随掺杂浓度变化）</small></h2>
@@ -826,16 +265,24 @@
                             <span class="item"><span class="line-sample" style="background:#3b82f6;"></span> 导带底 Ec</span>
                             <span class="item"><span class="line-sample" style="background:#22c55e;"></span> 价带顶 Ev</span>
                             <span class="item"><span class="line-sample dashed"></span> 费米能级 Ef</span>
-                            <span class="item" style="color:#facc15;">⬆ 掺杂↑ → Ef 向带边靠近</span>
+                            <span class="item" style="color:#facc15;">⬆ 掺杂↑ → Ef 向带边靠近，Vbi 增大</span>
                         </div>
                     </div>
                 </section>
-
-                <!-- 曲线图 -->
+                <!-- 曲线区域：I-V/L-I + 效率曲线 -->
                 <section class="sim-section">
-                    <h2 class="section-title">📉 I-V & 光强特性曲线</h2>
+                    <h2 class="section-title">📉 特性曲线</h2>
                     <div class="sim-content">
-                        <canvas id="chart-main" width="750" height="260"></canvas>
+                        <div class="curve-container">
+                            <!-- I-V & L-I -->
+                            <div class="curve-row">
+                                <canvas id="chart-main" width="750" height="260"></canvas>
+                            </div>
+                            <!-- 效率曲线 (IQE/EQE vs V) -->
+                            <div class="curve-row">
+                                <canvas id="efficiency-chart" width="750" height="200"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -844,16 +291,11 @@
 
     <script>
         // =====================================================================
-        //  🚀 优化版：迁移率敏感 · 消除保底常数 · 参数变化更明显
-        //  修改点：
-        //  1. 光子生成率：去掉 +0.1 保底，改为 (current / 20) 并提高系数
-        //  2. 粒子复合概率：增加迁移率因子，使低迁移率时复合更慢（堆积更明显）
-        //  3. 粒子生成率：提高迁移率影响权重
-        //  4. 电流计算：加强迁移率指数效应
-        //  5. 阈值检查：移除 current > 0.5 的硬门槛，让光子即使在低电流也有少量产生
+        //  完整增强版：温度影响载流子数目（粒子生成速率 + 颜色）
+        //  新增效率曲线 (IQE/EQE vs Voltage)
         // =====================================================================
 
-        // ========== 1. DOM 引用 ==========
+        // ---- DOM 引用 ----
         const voltSlider = document.getElementById('volt-slider');
         const voltValue = document.getElementById('volt-value');
         const bandSlider = document.getElementById('band-slider');
@@ -874,6 +316,11 @@
         const iqeData = document.getElementById('iqe-data');
         const eqeData = document.getElementById('eqe-data');
         const wpeData = document.getElementById('wpe-data');
+        const rradData = document.getElementById('rrad-data');
+        const rsrhData = document.getElementById('rsrh-data');
+        const raugData = document.getElementById('raug-data');
+        const srhTempFactor = document.getElementById('srh-temp-factor');
+        const tempInjectFactor = document.getElementById('temp-inject-factor');
         const faultWarning = document.getElementById('fault-warning');
         const currentVoltageDisplay = document.getElementById('current-voltage-display');
 
@@ -893,13 +340,15 @@
         const presetBtns = document.querySelectorAll('.preset-btn-nav');
         const materialPresets = document.querySelectorAll('.preset-btn');
 
-        // 主视图元素
+        // 画布
         const carrierCanvas = document.getElementById('carrier-main');
         const carrierCtx = carrierCanvas.getContext('2d');
         const bandCanvas = document.getElementById('band-main');
         const bandCtx = bandCanvas.getContext('2d');
         const chartCanvas = document.getElementById('chart-main');
         const chartCtx = chartCanvas.getContext('2d');
+        const effChartCanvas = document.getElementById('efficiency-chart');
+        const effChartCtx = effChartCanvas.getContext('2d');
 
         const ledEl = document.getElementById('led-main');
         const photonArea = document.getElementById('photon-main');
@@ -911,7 +360,7 @@
         const progressText = document.getElementById('progress-text');
         const expIndicator = document.getElementById('exp-indicator');
 
-        // ========== 2. 仿真参数 ==========
+        // ---- 仿真参数 ----
         const simParam = {
             voltage: 2.0,
             bandGap: 1.8,
@@ -927,26 +376,48 @@
             faultType: 'none'
         };
 
-        // ========== 3. 粒子系统 ==========
         let particles = [];
         let photons = [];
-
         const H_CONST = 1240;
         const V_ON = 1.6;
         const X_MAX = 5;
         const Y_MAX = 50;
+        let frameCount = 0;
 
-        // ========== 4. 工具函数 ==========
+        // ---- 工具函数 ----
         function getBiasStatus(v) {
             if (v < -0.1) return "反向偏置";
             if (v > 0.1) return "正向偏置";
             return "零偏置";
         }
 
-        // 电流计算：增强迁移率指数效应（平方关系）
+        function getEmissionColor(wavelength, alpha = 1) {
+            const w = wavelength || 580;
+            let r, g, b;
+            if (w >= 620) { r = 239; g = 68; b = 68; }
+            else if (w >= 570) { r = 249; g = 115; b = 22; }
+            else if (w >= 495) { r = 34; g = 197; b = 94; }
+            else if (w >= 450) { r = 59; g = 130; b = 246; }
+            else { r = 168; g = 85; b = 247; }
+            return `rgba(${r},${g},${b},${alpha})`;
+        }
+        function getEmissionColorHex(wavelength) {
+            const w = wavelength || 580;
+            if (w >= 620) return '#ef4444';
+            if (w >= 570) return '#f97316';
+            if (w >= 495) return '#22c55e';
+            if (w >= 450) return '#3b82f6';
+            return '#a855f7';
+        }
+        function getEffectiveBandGap() {
+            let eg = simParam.bandGap;
+            eg -= (simParam.temp - 25) * 0.0002;
+            return Math.max(1.0, eg);
+        }
+
+        // ---- 电流与光强基础计算 ----
         function calcPoint(v) {
             const tempFactor = 1 + (simParam.temp - 25) * 0.012;
-            // 迁移率因子：以600为基准，平方关系使变化更剧烈
             const mobilityFactor = Math.pow(simParam.mobilityE / 600, 1.5);
             const dopingFactor = simParam.doping / 10;
             const materialFactor = mobilityFactor * dopingFactor;
@@ -958,61 +429,92 @@
             }
             i = Math.min(i, Y_MAX);
             const lossFactor = Math.max(0, 1 - (simParam.temp / 150));
-            let l = i * lossFactor * 0.8;
+            const saturation = 0.6 + 0.4 * Math.min(i / 15, 1);
+            let l = i * lossFactor * saturation * 0.9;
             if (simParam.faultActive && simParam.faultType === 'overtemp') l *= 0.2;
             return { v, i, l };
         }
 
-        function getEmissionColor(wavelength, alpha = 1) {
-            const w = wavelength || 580;
-            let r, g, b;
-            if (w >= 620) { r = 239;
-                g = 68;
-                b = 68; } else if (w >= 570) { r = 249;
-                g = 115;
-                b = 22; } else if (w >= 495) { r = 34;
-                g = 197;
-                b = 94; } else if (w >= 450) { r = 59;
-                g = 130;
-                b = 246; } else { r = 168;
-                g = 85;
-                b = 247; }
-            return `rgba(${r},${g},${b},${alpha})`;
+        // ---- ABC 效率计算 ----
+        function calcEfficiency(current, temp) {
+            const n = current / 15;
+            if (n < 1e-6) return { iqe: 0, eqe: 0, Rrad: 0, Rsrh: 0, Raug: 0, A: 0, B: 0, C: 0, srhFactor: 1 };
+
+            const T = temp + 273.15;
+            const T0 = 298.15;
+            const dT = T - T0;
+
+            const srhFactor = Math.exp(dT / 50);
+
+            const A = 0.5 * srhFactor;
+            const B = 1.2 * (1 - 0.002 * dT);
+            const C = 0.6 * (1 + 0.005 * dT);
+
+            const Rrad = B * n * n;
+            const Rsrh = A * n;
+            const Raug = C * n * n * n;
+            const total = Rrad + Rsrh + Raug;
+            const iqe = (total > 0) ? (Rrad / total) * 100 : 0;
+
+            const extraction = 0.65 - 0.001 * dT / 50;
+            const eqe = iqe * Math.max(0.3, Math.min(0.85, extraction));
+
+            return { iqe, eqe, Rrad, Rsrh, Raug, A, B, C, srhFactor };
         }
 
-        function getEmissionColorHex(wavelength) {
-            const w = wavelength || 580;
-            if (w >= 620) return '#ef4444';
-            if (w >= 570) return '#f97316';
-            if (w >= 495) return '#22c55e';
-            if (w >= 450) return '#3b82f6';
-            return '#a855f7';
+        // ---- 计算效率曲线数据（用于画图） ----
+        function calcEfficiencyCurve() {
+            const data = [];
+            for (let v = 0; v <= X_MAX; v += 0.1) {
+                const pt = calcPoint(v);
+                const eff = calcEfficiency(pt.i, simParam.temp);
+                data.push({ v: v, iqe: eff.iqe, eqe: eff.eqe });
+            }
+            return data;
         }
 
-        function getEffectiveBandGap() {
-            let eg = simParam.bandGap;
-            eg -= (simParam.temp - 25) * 0.0002;
-            return Math.max(1.0, eg);
-        }
-
-        // ========== 5. 核心计算 ==========
+        // ---- 主仿真计算 ----
         function calcSimulation() {
             const egEff = getEffectiveBandGap();
             simParam.wavelength = Math.round(H_CONST / egEff);
             const pt = calcPoint(simParam.voltage);
             simParam.current = parseFloat(pt.i.toFixed(2));
-            simParam.lightIntensity = parseFloat(pt.l.toFixed(2));
-            simParam.heatLoss = Math.round((simParam.temp / 120) * 100);
+
+            const rawLight = parseFloat(pt.l.toFixed(2));
+
+            const eff = calcEfficiency(simParam.current, simParam.temp);
+            const iqe = eff.iqe;
+            const eqe = eff.eqe;
+
+            srhTempFactor.innerText = eff.srhFactor.toFixed(2) + 'x';
+            // 温度注入因子（用于粒子生成）
+            const injectFactor = 1 - 0.004 * (simParam.temp - 25);
+            const clampedFactor = Math.max(0.3, Math.min(1.5, injectFactor));
+            tempInjectFactor.innerText = clampedFactor.toFixed(2);
+
+            const iqeFactor = iqe / 55;
+            let faultFactor = 1;
+            if (simParam.faultActive && simParam.faultType === 'overtemp') faultFactor = 0.2;
+            if (simParam.faultActive && simParam.faultType === 'overcurrent') faultFactor = 0.5;
+            simParam.lightIntensity = parseFloat((rawLight * iqeFactor * faultFactor).toFixed(2));
+
+            const nonRadiative = 100 - iqe;
+            const tempLoss = Math.round((simParam.temp / 120) * 50);
+            simParam.heatLoss = Math.min(95, Math.round(nonRadiative * 0.5 + tempLoss * 0.5));
 
             const pElec = simParam.voltage * simParam.current / 1000;
             const pOpt = simParam.lightIntensity * 0.01;
-            const iqe = (simParam.current > 0.01) ? Math.min(100, (simParam.lightIntensity / (simParam.current * 0.8)) * 100) :
-                0;
-            const eqe = iqe * 0.6;
-            const wpe = (pElec > 0) ? Math.min(100, (pOpt / pElec) * 100) : 0;
+            const extractionEfficiency = 0.65;
+            const wallPlugLoss = 0.85;
+            let wpe = (pElec > 0) ? (pOpt / pElec) * 100 * extractionEfficiency * wallPlugLoss : 0;
+            wpe = Math.min(wpe, 65);
+
             iqeData.innerText = iqe.toFixed(1);
             eqeData.innerText = eqe.toFixed(1);
             wpeData.innerText = wpe.toFixed(1);
+            rradData.innerText = eff.Rrad.toFixed(3);
+            rsrhData.innerText = eff.Rsrh.toFixed(3);
+            raugData.innerText = eff.Raug.toFixed(3);
 
             biasState.innerText = getBiasStatus(simParam.voltage);
             currentVoltageDisplay.innerText = simParam.voltage.toFixed(2);
@@ -1020,12 +522,12 @@
             updateDescAndProgress();
             updateLedEffect();
             drawAllChart();
+            drawEfficiencyChart();
             drawAllBand();
 
             if (simParam.faultActive) {
                 faultWarning.style.display = 'block';
-                faultWarning.innerText = simParam.faultType === 'overcurrent' ? '🚨 过流故障！电流受限' :
-                    '🚨 过热故障！亮度骤降';
+                faultWarning.innerText = simParam.faultType === 'overcurrent' ? '🚨 过流故障！电流受限' : '🚨 过热故障！亮度骤降';
             } else {
                 faultWarning.style.display = 'none';
             }
@@ -1043,27 +545,25 @@
             const v = simParam.voltage;
             const expText = simParam.faultActive ? '⚠️ 故障' : '就绪';
             expIndicator.innerText = expText;
-
             if (v < -0.1) {
                 descEl.innerText = "反向偏置：势垒大幅加宽，载流子无法导通";
                 progressText.innerText = '反向偏置 | 截止';
             } else if (v >= -0.1 && v <= 0.1) {
-                descEl.innerText = "零偏置：PN结能带平直，动态平衡";
-                progressText.innerText = '零偏置 | 热平衡';
+                descEl.innerText = "零偏置：内建势垒存在，能带弯曲，无净电流";
+                progressText.innerText = '零偏置 | 内建电场';
             } else if (v >= V_ON) {
                 descEl.innerText = "正向偏置：载流子辐射复合，释放光子 ✨";
                 progressText.innerText = '正向偏置 | 发光中 💡';
             } else {
-                descEl.innerText = "正向低压：电流较小，亮度微弱";
+                descEl.innerText = "正向低压：尚未克服内建电势，电流较小";
                 progressText.innerText = '正向偏置（低压）| 微弱发光';
             }
             carrierLabel.innerText = `载流子: ${particles.length}`;
             photonCount.innerText = `光子: ${photons.length}`;
         }
 
-        // ========== 6. LED 发光效果 ==========
+        // ---- LED 发光 ----
         let breathPhase = 0;
-
         function updateLedEffect() {
             const v = simParam.voltage;
             const wave = simParam.wavelength;
@@ -1071,19 +571,14 @@
             breathPhase += 0.03;
             const breath = 0.7 + 0.3 * Math.sin(breathPhase);
             const isFault = simParam.faultActive;
-
             if (v >= V_ON && simParam.isAnimRun && !isFault) {
-                // 发光强度与电流成正比，但增加迁移率影响（电流已经包含）
-                const intensity = Math.min(1, simParam.current / 30) * breath;
+                const intensity = Math.min(1, simParam.lightIntensity / 20) * breath;
                 const alpha = 0.3 + 0.7 * intensity;
-                const r = parseInt(color.slice(1, 3), 16);
-                const g = parseInt(color.slice(3, 5), 16);
-                const b = parseInt(color.slice(5, 7), 16);
+                const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
                 const bg = `rgba(${r},${g},${b},${alpha})`;
                 ledEl.style.background = bg;
                 const glowSize = 20 + 30 * intensity;
-                ledEl.style.boxShadow =
-                    `0 0 ${glowSize}px ${glowSize/2}px ${color}40, 0 0 ${glowSize*2}px ${glowSize/3}px ${color}20`;
+                ledEl.style.boxShadow = `0 0 ${glowSize}px ${glowSize/2}px ${color}40, 0 0 ${glowSize*2}px ${glowSize/3}px ${color}20`;
                 ledEl.style.opacity = Math.min(1, 0.4 + 0.6 * intensity);
                 photonArea.style.background = `rgba(${r},${g},${b},${0.2 + 0.3 * intensity})`;
                 photonArea.style.boxShadow = `0 -8px 30px ${color}60`;
@@ -1117,7 +612,7 @@
             }
         }
 
-        // ========== 7. 粒子动画（迁移率影响速度 + 复合概率） ==========
+        // ---- 粒子动画（增强温度影响） ----
         function spawnParticle() {
             const v = simParam.voltage;
             const isForward = v >= V_ON;
@@ -1126,48 +621,48 @@
             const fault = simParam.faultActive;
             const mobilityFactor = simParam.mobilityE / 600;
 
-            // 粒子生成率：迁移率因子平方，增强灵敏度
+            // 温度注入因子（低温粒子多，高温粒子少）
+            const injectFactor = 1 - 0.004 * (simParam.temp - 25);
+            const clampedFactor = Math.max(0.3, Math.min(1.5, injectFactor));
+
             let rate = 0;
             if (isForward && !fault) {
-                rate = 0.2 + 0.6 * Math.pow(mobilityFactor, 1.5) * (simParam.doping / 10);
+                rate = 0.2 + 0.6 * Math.pow(mobilityFactor, 1.5) * (simParam.doping / 10) * clampedFactor;
             } else if (isZero) {
-                rate = 0.05;
+                rate = 0.05 * clampedFactor;
             } else if (isReverse) {
-                rate = 0.02;
+                rate = 0.02 * clampedFactor;
             }
             if (fault) rate *= 0.1;
-
             if (Math.random() < rate && simParam.isAnimRun) {
                 const fromP = Math.random() < 0.5;
                 const x = fromP ? 20 + Math.random() * 30 : 190 + Math.random() * 30;
                 const y = 20 + Math.random() * 50;
-                // 速度与迁移率成正比
                 const baseSpeed = 1.0 + 2.0 * mobilityFactor;
                 const vx = fromP ? (baseSpeed + Math.random() * 0.8) : (-baseSpeed - Math.random() * 0.8);
                 const vy = (Math.random() - 0.5) * 0.8;
                 const size = 3 + Math.random() * 3;
                 const type = fromP ? 'hole' : 'electron';
-                particles.push({ x, y, vx, vy, size, type, life: 1, maxLife: 100 + Math.random() * 150 });
+                // 存储温度因子以便绘制颜色
+                const tempColorFactor = clampedFactor;
+                particles.push({ x, y, vx, vy, size, type, life: 1, maxLife: 100 + Math.random() * 150, tempFactor: tempColorFactor });
             }
-
-            // ---- 光子生成（消除保底常数，完全由电流驱动） ----
             if (isForward && simParam.isAnimRun && !fault) {
-                // 光子生成率与电流成正比，且加入迁移率影响
-                const photonRate = simParam.current / 15; // 去掉 +0.1，放大系数
+                const photonRate = Math.max(0, simParam.lightIntensity / 15);
                 if (Math.random() < photonRate) {
                     const wave = simParam.wavelength;
                     const color = getEmissionColor(wave, 0.9);
-                    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
-                    const speed = 0.8 + Math.random() * 1.5;
+                    const angle = -Math.PI/2 + (Math.random()-0.5)*1.2;
+                    const speed = 0.8 + Math.random()*1.5;
                     photons.push({
-                        x: 120 + (Math.random() - 0.5) * 20,
-                        y: 35 + (Math.random() - 0.5) * 10,
-                        vx: Math.cos(angle) * speed * 0.8,
-                        vy: Math.sin(angle) * speed - 0.5,
-                        size: 2 + Math.random() * 4,
+                        x: 120 + (Math.random()-0.5)*20,
+                        y: 35 + (Math.random()-0.5)*10,
+                        vx: Math.cos(angle)*speed*0.8,
+                        vy: Math.sin(angle)*speed - 0.5,
+                        size: 2 + Math.random()*4,
                         life: 1,
                         color: color,
-                        decay: 0.005 + Math.random() * 0.008
+                        decay: 0.005 + Math.random()*0.008
                     });
                 }
             }
@@ -1179,67 +674,54 @@
             const isReverse = v < -0.1;
             const fault = simParam.faultActive;
             const mobilityFactor = simParam.mobilityE / 600;
-
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 if (isReverse) {
                     p.vx += (p.x < 120 ? -0.05 : 0.05);
                 } else if (isForward && !fault) {
-                    // 迁移率影响电场加速
                     const accel = 0.03 * mobilityFactor;
                     p.vx += (p.x < 120 ? accel : -accel);
                 }
-                // 热运动噪声与迁移率相关
                 const thermalNoise = 0.05 + 0.05 * mobilityFactor;
                 p.vx += (Math.random() - 0.5) * thermalNoise;
                 p.vy += (Math.random() - 0.5) * thermalNoise;
-
                 const maxSpeed = isForward ? (1.5 + 2.5 * mobilityFactor) : 1.2;
-                const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-                if (sp > maxSpeed) { p.vx = (p.vx / sp) * maxSpeed;
-                    p.vy = (p.vy / sp) * maxSpeed; }
+                const sp = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+                if (sp > maxSpeed) { p.vx = (p.vx/sp)*maxSpeed; p.vy = (p.vy/sp)*maxSpeed; }
                 p.x += p.vx;
                 p.y += p.vy;
-                if (p.x < 5) { p.x = 5;
-                    p.vx *= -0.5; }
-                if (p.x > 235) { p.x = 235;
-                    p.vx *= -0.5; }
-                if (p.y < 5) { p.y = 5;
-                    p.vy *= -0.5; }
-                if (p.y > 85) { p.y = 85;
-                    p.vy *= -0.5; }
-
-                // 复合概率：与电流和迁移率相关（迁移率低，复合概率低，堆积更明显）
+                if (p.x < 5) { p.x = 5; p.vx *= -0.5; }
+                if (p.x > 235) { p.x = 235; p.vx *= -0.5; }
+                if (p.y < 5) { p.y = 5; p.vy *= -0.5; }
+                if (p.y > 85) { p.y = 85; p.vy *= -0.5; }
                 const recombinationProb = 0.01 + 0.03 * (simParam.current / 10) * mobilityFactor;
                 if (p.x > 100 && p.x < 140 && isForward && simParam.isAnimRun && !fault) {
                     if (Math.random() < recombinationProb) {
                         const wave = simParam.wavelength;
                         const color = getEmissionColor(wave, 0.9);
-                        for (let k = 0; k < 2; k++) {
-                            const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5;
-                            const speed = 0.6 + Math.random() * 1.8;
+                        for (let k=0; k<2; k++) {
+                            const angle = -Math.PI/2 + (Math.random()-0.5)*1.5;
+                            const speed = 0.6 + Math.random()*1.8;
                             photons.push({
-                                x: p.x + (Math.random() - 0.5) * 10,
-                                y: p.y + (Math.random() - 0.5) * 10,
-                                vx: Math.cos(angle) * speed,
-                                vy: Math.sin(angle) * speed - 0.8,
-                                size: 1.5 + Math.random() * 3.5,
+                                x: p.x + (Math.random()-0.5)*10,
+                                y: p.y + (Math.random()-0.5)*10,
+                                vx: Math.cos(angle)*speed,
+                                vy: Math.sin(angle)*speed - 0.8,
+                                size: 1.5 + Math.random()*3.5,
                                 life: 1,
                                 color: color,
-                                decay: 0.006 + Math.random() * 0.012
+                                decay: 0.006 + Math.random()*0.012
                             });
                         }
-                        particles.splice(i, 1);
+                        particles.splice(i,1);
                         continue;
                     }
                 }
                 p.life -= 0.002;
                 if (p.life <= 0 || p.x < 0 || p.x > 240 || p.y < 0 || p.y > 90) {
-                    particles.splice(i, 1);
+                    particles.splice(i,1);
                 }
             }
-
-            // 更新光子（生命周期）
             for (let i = photons.length - 1; i >= 0; i--) {
                 const ph = photons[i];
                 ph.x += ph.vx;
@@ -1248,10 +730,9 @@
                 ph.life -= ph.decay || 0.01;
                 ph.size *= 0.997;
                 if (ph.life <= 0 || ph.size < 0.3 || ph.y < -20 || ph.x < -20 || ph.x > 260) {
-                    photons.splice(i, 1);
+                    photons.splice(i,1);
                 }
             }
-            // 限制数量
             if (particles.length > 300) particles.splice(0, particles.length - 300);
             if (photons.length > 200) photons.splice(0, photons.length - 200);
         }
@@ -1259,91 +740,221 @@
         function drawParticles() {
             const ctx = carrierCtx;
             const canvas = carrierCanvas;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+            ctx.clearRect(0,0,canvas.width,canvas.height);
             const v = simParam.voltage;
             if (v >= V_ON && simParam.isAnimRun && !simParam.faultActive) {
                 const wave = simParam.wavelength;
                 const color = getEmissionColor(wave, 0.15);
                 ctx.fillStyle = color;
-                ctx.fillRect(100, 0, 50, canvas.height);
-                const grad = ctx.createRadialGradient(120, 45, 5, 120, 45, 50);
-                const c = getEmissionColor(wave, 0.2);
-                grad.addColorStop(0, c);
-                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillRect(100,0,50,canvas.height);
+                const grad = ctx.createRadialGradient(120,45,5,120,45,50);
+                const c = getEmissionColor(wave,0.2);
+                grad.addColorStop(0,c);
+                grad.addColorStop(1,'rgba(255,255,255,0)');
                 ctx.fillStyle = grad;
-                ctx.fillRect(80, 5, 90, 80);
+                ctx.fillRect(80,5,90,80);
             }
-
+            // 绘制粒子，颜色随温度变化
             for (const p of particles) {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                // 温度因子影响颜色亮度：低温亮，高温暗
+                const tf = p.tempFactor || 1.0;
+                const brightness = Math.max(0.3, Math.min(1.0, tf * 0.7));
+                let baseColor;
                 if (p.type === 'electron') {
-                    ctx.fillStyle = `rgba(56, 189, 248, ${p.life * 0.9})`;
-                    ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+                    baseColor = [56, 189, 248]; // 蓝色
                 } else {
-                    ctx.fillStyle = `rgba(250, 204, 21, ${p.life * 0.9})`;
-                    ctx.shadowColor = 'rgba(250, 204, 21, 0.5)';
+                    baseColor = [250, 204, 21]; // 黄色
                 }
+                const r = Math.round(baseColor[0] * brightness);
+                const g = Math.round(baseColor[1] * brightness);
+                const b = Math.round(baseColor[2] * brightness);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(${r},${g},${b},${p.life * 0.9})`;
+                ctx.shadowColor = `rgba(${r},${g},${b},0.5)`;
                 ctx.shadowBlur = 8;
                 ctx.fill();
                 ctx.shadowBlur = 0;
                 ctx.beginPath();
-                ctx.arc(p.x - p.size * 0.2, p.y - p.size * 0.2, p.size * 0.3, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.arc(p.x - p.size*0.2, p.y - p.size*0.2, p.size*0.3, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(255,255,255,${0.3 * brightness})`;
                 ctx.fill();
             }
-
             for (const ph of photons) {
                 ctx.beginPath();
-                ctx.arc(ph.x, ph.y, Math.max(0.5, ph.size), 0, Math.PI * 2);
+                ctx.arc(ph.x, ph.y, Math.max(0.5, ph.size), 0, Math.PI*2);
                 ctx.fillStyle = ph.color || 'rgba(255,255,200,0.7)';
                 ctx.shadowColor = ph.color || 'rgba(255,255,200,0.3)';
                 ctx.shadowBlur = 15;
                 ctx.fill();
                 ctx.shadowBlur = 0;
                 ctx.beginPath();
-                ctx.arc(ph.x, ph.y, Math.max(0.5, ph.size * 2.5), 0, Math.PI * 2);
-                const grad = ctx.createRadialGradient(ph.x, ph.y, 0, ph.x, ph.y, ph.size * 2.5);
-                grad.addColorStop(0, ph.color ? ph.color.replace('0.9', '0.15') : 'rgba(255,255,200,0.1)');
-                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.arc(ph.x, ph.y, Math.max(0.5, ph.size*2.5), 0, Math.PI*2);
+                const grad = ctx.createRadialGradient(ph.x, ph.y, 0, ph.x, ph.y, ph.size*2.5);
+                grad.addColorStop(0, ph.color ? ph.color.replace('0.9','0.15') : 'rgba(255,255,200,0.1)');
+                grad.addColorStop(1,'rgba(255,255,255,0)');
                 ctx.fillStyle = grad;
                 ctx.fill();
             }
             ctx.shadowBlur = 0;
         }
 
-        // ========== 8. 动画主循环 ==========
-        let frameCount = 0;
-
         function animationLoop() {
             frameCount++;
             spawnParticle();
             updateParticles();
             drawParticles();
-            if (frameCount % 2 === 0) {
-                updateLedEffect();
-            }
-            if (frameCount % 10 === 0) {
-                updateDataView();
-                updateDescAndProgress();
-            }
+            if (frameCount % 2 === 0) updateLedEffect();
+            if (frameCount % 10 === 0) { updateDataView(); updateDescAndProgress(); }
             requestAnimationFrame(animationLoop);
         }
 
-        // ========== 9. 曲线绘制 ==========
+        // ---- 曲线绘制：I-V & L-I ----
         function drawChartSingle() {
             const ctx = chartCtx;
             const canvas = chartCanvas;
-            const w = canvas.width,
-                h = canvas.height,
-                pad = 40;
+            const w = canvas.width, h = canvas.height;
+            const pad = 40;
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#101824';
+            ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = '#4a5a7a';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            ctx.lineTo(w - pad, h - pad);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pad, pad);
+            ctx.lineTo(pad, h - pad);
+            ctx.stroke();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = "13px Microsoft Yahei";
+            ctx.fillText("电压 (V)", w - 70, h - 8);
+            ctx.fillText("电流 (mA) / 光强 (cd)", 10, 22);
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x <= X_MAX; x += 1) {
+                let px = pad + (x / X_MAX) * (w - pad * 2);
+                ctx.beginPath();
+                ctx.moveTo(px, pad);
+                ctx.lineTo(px, h - pad);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= Y_MAX; y += 10) {
+                let py = h - pad - (y / Y_MAX) * (h - pad * 2);
+                ctx.beginPath();
+                ctx.moveTo(pad, py);
+                ctx.lineTo(w - pad, py);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = '#4a5a7a';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = "12px Microsoft Yahei";
+            for (let x = 0; x <= X_MAX; x += 1) {
+                let px = pad + (x / X_MAX) * (w - pad * 2);
+                ctx.beginPath();
+                ctx.moveTo(px, h - pad);
+                ctx.lineTo(px, h - pad + 6);
+                ctx.stroke();
+                ctx.fillText(x, px - 6, h - pad + 20);
+            }
+            for (let y = 0; y <= Y_MAX; y += 10) {
+                let py = h - pad - (y / Y_MAX) * (h - pad * 2);
+                ctx.beginPath();
+                ctx.moveTo(pad, py);
+                ctx.lineTo(pad - 6, py);
+                ctx.stroke();
+                ctx.fillText(y, pad - 28, py + 4);
+            }
+            ctx.fillStyle = "#3498db";
+            ctx.fillRect(pad + 20, pad + 10, 14, 14);
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "13px Microsoft Yahei";
+            ctx.fillText("I-V", pad + 40, pad + 22);
+            ctx.fillStyle = "#f39c12";
+            ctx.fillRect(pad + 100, pad + 10, 14, 14);
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("L-I", pad + 120, pad + 22);
+            const points = [];
+            for (let v = 0; v <= X_MAX; v += 0.05) {
+                points.push(calcPoint(v));
+            }
+            if (points.length < 2) return;
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            points.forEach((pt, idx) => {
+                let x = pad + (pt.v / X_MAX) * (w - pad * 2);
+                let y = h - pad - (Math.min(pt.i, Y_MAX) / Y_MAX) * (h - pad * 2);
+                idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            points.forEach((pt, idx) => {
+                let x = pad + (pt.v / X_MAX) * (w - pad * 2);
+                let y = h - pad - (Math.min(pt.l, Y_MAX) / Y_MAX) * (h - pad * 2);
+                idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            const curV = simParam.voltage;
+            if (curV >= 0 && curV <= X_MAX) {
+                const pt = calcPoint(curV);
+                let x = pad + (curV / X_MAX) * (w - pad * 2);
+                let yI = h - pad - (Math.min(pt.i, Y_MAX) / Y_MAX) * (h - pad * 2);
+                let yL = h - pad - (Math.min(pt.l, Y_MAX) / Y_MAX) * (h - pad * 2);
+                ctx.beginPath();
+                ctx.arc(x, yI, 7, 0, Math.PI * 2);
+                ctx.fillStyle = '#3498db';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                const labelI = `I: ${pt.i.toFixed(1)} mA`;
+                ctx.fillStyle = '#3498db';
+                ctx.font = "12px Microsoft Yahei";
+                let txI = x + 12, tyI = yI - 8;
+                if (txI + 80 > w - 10) txI = x - 100;
+                if (tyI < 20) tyI = yI + 20;
+                ctx.fillText(labelI, txI, tyI);
+                ctx.beginPath();
+                ctx.arc(x, yL, 7, 0, Math.PI * 2);
+                ctx.fillStyle = '#f39c12';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                const labelL = `L: ${pt.l.toFixed(1)} cd`;
+                ctx.fillStyle = '#f39c12';
+                ctx.font = "12px Microsoft Yahei";
+                let txL = x - 90, tyL = yL - 8;
+                if (txL < 10) txL = x + 12;
+                if (tyL < 20) tyL = yL + 20;
+                if (Math.abs(tyI - tyL) < 25 && Math.abs(txI - txL) < 50) {
+                    tyL = yL + 25;
+                    if (tyL > h - 20) tyL = yL - 25;
+                }
+                ctx.fillText(labelL, txL, tyL);
+            }
+        }
+        function drawAllChart() { drawChartSingle(); }
+
+        // ---- 新增：效率曲线绘制 (IQE/EQE vs V) ----
+        function drawEfficiencyChart() {
+            const ctx = effChartCtx;
+            const canvas = effChartCanvas;
+            const w = canvas.width, h = canvas.height;
+            const pad = 40;
             ctx.clearRect(0, 0, w, h);
             ctx.fillStyle = '#101824';
             ctx.fillRect(0, 0, w, h);
 
+            // 坐标轴
             ctx.strokeStyle = '#4a5a7a';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
             ctx.moveTo(pad, h - pad);
             ctx.lineTo(w - pad, h - pad);
@@ -1354,164 +965,183 @@
             ctx.stroke();
 
             ctx.fillStyle = '#94a3b8';
-            ctx.font = "12px Microsoft Yahei";
-            ctx.fillText("电压 (V)", w - 70, h - 10);
-            ctx.fillText("电流/光强", 10, 25);
+            ctx.font = "13px Microsoft Yahei";
+            ctx.fillText("电压 (V)", w - 70, h - 8);
+            ctx.fillText("效率 (%)", 10, 22);
 
+            // 网格
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x <= X_MAX; x += 1) {
+                let px = pad + (x / X_MAX) * (w - pad * 2);
+                ctx.beginPath();
+                ctx.moveTo(px, pad);
+                ctx.lineTo(px, h - pad);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= 100; y += 20) {
+                let py = h - pad - (y / 100) * (h - pad * 2);
+                ctx.beginPath();
+                ctx.moveTo(pad, py);
+                ctx.lineTo(w - pad, py);
+                ctx.stroke();
+            }
+
+            // 刻度
+            ctx.strokeStyle = '#4a5a7a';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = "12px Microsoft Yahei";
             for (let x = 0; x <= X_MAX; x += 1) {
                 let px = pad + (x / X_MAX) * (w - pad * 2);
                 ctx.beginPath();
                 ctx.moveTo(px, h - pad);
-                ctx.lineTo(px, h - pad + 5);
+                ctx.lineTo(px, h - pad + 6);
                 ctx.stroke();
-                ctx.fillText(x, px - 6, h - pad + 18);
+                ctx.fillText(x, px - 6, h - pad + 20);
             }
-            for (let y = 0; y <= Y_MAX; y += 10) {
-                let py = h - pad - (y / Y_MAX) * (h - pad * 2);
+            for (let y = 0; y <= 100; y += 20) {
+                let py = h - pad - (y / 100) * (h - pad * 2);
                 ctx.beginPath();
                 ctx.moveTo(pad, py);
-                ctx.lineTo(pad - 5, py);
+                ctx.lineTo(pad - 6, py);
                 ctx.stroke();
-                ctx.fillText(y, pad - 25, py + 4);
+                ctx.fillText(y, pad - 28, py + 4);
             }
 
-            ctx.fillStyle = "#3498db";
-            ctx.fillRect(pad + 20, pad + 10, 12, 12);
+            // 图例
+            ctx.fillStyle = "#3b82f6";
+            ctx.fillRect(pad + 20, pad + 10, 14, 14);
             ctx.fillStyle = "#94a3b8";
-            ctx.fillText("I-V", pad + 40, pad + 20);
-            ctx.fillStyle = "#f39c12";
-            ctx.fillRect(pad + 100, pad + 10, 12, 12);
-            ctx.fillText("L-I", pad + 120, pad + 20);
+            ctx.font = "13px Microsoft Yahei";
+            ctx.fillText("IQE", pad + 40, pad + 22);
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(pad + 100, pad + 10, 14, 14);
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("EQE", pad + 120, pad + 22);
 
-            const points = [];
-            const maxV = Math.min(Math.max(simParam.voltage + 0.5, 2), X_MAX);
-            for (let v = 0; v <= maxV; v += 0.05) points.push(calcPoint(v));
-            if (points.length < 2) return;
+            // 获取数据
+            const data = [];
+            for (let v = 0; v <= X_MAX; v += 0.05) {
+                const pt = calcPoint(v);
+                const eff = calcEfficiency(pt.i, simParam.temp);
+                data.push({ v, iqe: eff.iqe, eqe: eff.eqe });
+            }
+            if (data.length < 2) return;
 
-            ctx.strokeStyle = '#3498db';
+            // 画IQE
+            ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
-            points.forEach((pt, idx) => {
-                let x = pad + (pt.v / X_MAX) * (w - pad * 2);
-                let y = h - pad - (Math.min(pt.i, Y_MAX) / Y_MAX) * (h - pad * 2);
+            data.forEach((d, idx) => {
+                let x = pad + (d.v / X_MAX) * (w - pad * 2);
+                let y = h - pad - (Math.min(d.iqe, 100) / 100) * (h - pad * 2);
                 idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
             ctx.stroke();
 
-            ctx.strokeStyle = '#f39c12';
+            // 画EQE
+            ctx.strokeStyle = '#f97316';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
-            points.forEach((pt, idx) => {
-                let x = pad + (pt.v / X_MAX) * (w - pad * 2);
-                let y = h - pad - (Math.min(pt.l, Y_MAX) / Y_MAX) * (h - pad * 2);
+            data.forEach((d, idx) => {
+                let x = pad + (d.v / X_MAX) * (w - pad * 2);
+                let y = h - pad - (Math.min(d.eqe, 100) / 100) * (h - pad * 2);
                 idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
             ctx.stroke();
 
+            // 当前工作点
             const curV = simParam.voltage;
             if (curV >= 0 && curV <= X_MAX) {
                 const pt = calcPoint(curV);
+                const eff = calcEfficiency(pt.i, simParam.temp);
                 let x = pad + (curV / X_MAX) * (w - pad * 2);
-                let yI = h - pad - (Math.min(pt.i, Y_MAX) / Y_MAX) * (h - pad * 2);
-                let yL = h - pad - (Math.min(pt.l, Y_MAX) / Y_MAX) * (h - pad * 2);
+                let yI = h - pad - (Math.min(eff.iqe, 100) / 100) * (h - pad * 2);
+                let yE = h - pad - (Math.min(eff.eqe, 100) / 100) * (h - pad * 2);
                 ctx.beginPath();
                 ctx.arc(x, yI, 6, 0, Math.PI * 2);
-                ctx.fillStyle = '#3498db';
+                ctx.fillStyle = '#3b82f6';
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.arc(x, yL, 6, 0, Math.PI * 2);
-                ctx.fillStyle = '#f39c12';
+                ctx.arc(x, yE, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#f97316';
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
-                ctx.fillStyle = '#cbd5e1';
+                ctx.fillStyle = '#e2e8f0';
                 ctx.font = "11px Microsoft Yahei";
-                ctx.fillText(`● (${curV.toFixed(1)}V, ${pt.i.toFixed(1)}mA)`, x - 50, yI - 12);
+                ctx.fillText(`IQE:${eff.iqe.toFixed(1)}%`, x + 10, yI - 8);
+                ctx.fillText(`EQE:${eff.eqe.toFixed(1)}%`, x + 10, yE + 16);
             }
         }
 
-        function drawAllChart() { drawChartSingle(); }
-
-        // ========== 10. 能带图 ==========
+        // ---- 能带图 ----
         function drawBandSingle() {
             const ctx = bandCtx;
             const canvas = bandCanvas;
-            const w = canvas.width,
-                h = canvas.height,
-                midY = h / 2;
+            const w = canvas.width, h = canvas.height, midY = h/2;
             const egEff = getEffectiveBandGap();
             const Eg = egEff * 12;
             const v = simParam.voltage;
             const doping = simParam.doping;
-
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = '#101824';
-            ctx.fillRect(0, 0, w, h);
-
-            let pShift = 0,
-                nShift = 0,
-                showTransition = false;
-            if (v < -0.1) { pShift = -Math.abs(v) * 14;
-                nShift = Math.abs(v) * 14; } else if (v > 0.1) { pShift = v * 14;
-                nShift = -v * 14;
-                showTransition = true; }
-
-            const midX = 350;
+            const Vbi = 0.65 + 0.02 * (doping - 10);
+            const V_eff = Vbi - v;
+            const scale = 14;
+            const pShift = -V_eff * scale;
+            const nShift = V_eff * scale;
             const bend = (pShift + nShift) / 2;
+            const showTransition = (v >= V_ON && simParam.current > 0.1 && !simParam.faultActive);
 
-            // Ec, Ev
-            ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.moveTo(50, midY - Eg / 2 + pShift);
-            ctx.lineTo(220, midY - Eg / 2 + pShift);
-            ctx.stroke();
-            ctx.strokeStyle = '#22c55e';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.moveTo(50, midY + Eg / 2 + pShift);
-            ctx.lineTo(220, midY + Eg / 2 + pShift);
-            ctx.stroke();
+            ctx.clearRect(0,0,w,h);
+            ctx.fillStyle = '#101824';
+            ctx.fillRect(0,0,w,h);
 
             ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.moveTo(220, midY - Eg / 2 + pShift);
-            ctx.quadraticCurveTo(midX, midY - Eg / 2 + bend, 480, midY - Eg / 2 + nShift);
+            ctx.moveTo(50, midY - Eg/2 + pShift);
+            ctx.lineTo(220, midY - Eg/2 + pShift);
             ctx.stroke();
             ctx.strokeStyle = '#22c55e';
-            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.moveTo(220, midY + Eg / 2 + pShift);
-            ctx.quadraticCurveTo(midX, midY + Eg / 2 + bend, 480, midY + Eg / 2 + nShift);
+            ctx.moveTo(50, midY + Eg/2 + pShift);
+            ctx.lineTo(220, midY + Eg/2 + pShift);
             ctx.stroke();
-
+            const midX = 350;
             ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.moveTo(480, midY - Eg / 2 + nShift);
-            ctx.lineTo(650, midY - Eg / 2 + nShift);
+            ctx.moveTo(220, midY - Eg/2 + pShift);
+            ctx.quadraticCurveTo(midX, midY - Eg/2 + bend, 480, midY - Eg/2 + nShift);
             ctx.stroke();
             ctx.strokeStyle = '#22c55e';
-            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.moveTo(480, midY + Eg / 2 + nShift);
-            ctx.lineTo(650, midY + Eg / 2 + nShift);
+            ctx.moveTo(220, midY + Eg/2 + pShift);
+            ctx.quadraticCurveTo(midX, midY + Eg/2 + bend, 480, midY + Eg/2 + nShift);
+            ctx.stroke();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.moveTo(480, midY - Eg/2 + nShift);
+            ctx.lineTo(650, midY - Eg/2 + nShift);
+            ctx.stroke();
+            ctx.strokeStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.moveTo(480, midY + Eg/2 + nShift);
+            ctx.lineTo(650, midY + Eg/2 + nShift);
             ctx.stroke();
 
-            // Ef
-            const Ec_mid = midY - Eg / 2 + bend;
-            const Ev_mid = midY + Eg / 2 + bend;
+            const Ec_mid = midY - Eg/2 + bend;
+            const Ev_mid = midY + Eg/2 + bend;
             const dopingFactor = Math.max(0, (20 - doping) / 20);
             const efOffset = 0.35 * dopingFactor;
             const efOffsetPx = efOffset * 12;
             const Ef_y = (Ec_mid + Ev_mid) / 2 + efOffsetPx * 0.6;
 
-            ctx.setLineDash([6, 5]);
+            ctx.setLineDash([6,5]);
             ctx.strokeStyle = '#ff6b6b';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
@@ -1523,54 +1153,50 @@
             ctx.fillStyle = '#ff6b6b';
             ctx.font = "bold 13px Microsoft Yahei";
             ctx.fillText("Ef", 660, Ef_y - 4);
-
             ctx.fillStyle = '#facc15';
             ctx.font = "11px Microsoft Yahei";
             const labelY = Ef_y > midY ? Ef_y - 22 : Ef_y + 22;
             ctx.fillText(`掺杂浓度 N = ${doping} × 10¹⁸ cm⁻³`, 50, labelY);
 
-            // 标注距离
-            const Ev_p = midY + Eg / 2 + pShift;
+            const Ev_p = midY + Eg/2 + pShift;
             const Ef_p_dist = (Ef_y - Ev_p) / 12;
             ctx.fillStyle = '#94a3b8';
             ctx.font = "11px Microsoft Yahei";
             ctx.fillText(`Ef - Ev = ${Math.max(0, Ef_p_dist.toFixed(2))} eV`, 20, Ev_p + 30);
-            const Ec_n = midY - Eg / 2 + nShift;
+            const Ec_n = midY - Eg/2 + nShift;
             const Ef_n_dist = (Ec_n - Ef_y) / 12;
             ctx.fillStyle = '#94a3b8';
             ctx.font = "11px Microsoft Yahei";
             ctx.fillText(`Ec - Ef = ${Math.max(0, Ef_n_dist.toFixed(2))} eV`, 580, Ec_n - 12);
-
-            ctx.fillStyle = '#facc15';
+            ctx.fillStyle = '#94a3b8';
             ctx.font = "11px Microsoft Yahei";
-            ctx.fillText("⬆ 掺杂↑ → Ef 向带边靠近", 640, 28);
+            ctx.fillText(`Vbi = ${Vbi.toFixed(2)} V  |  V_eff = ${V_eff.toFixed(2)} V`, 640, h-20);
 
-            // 跃迁箭头
-            if (showTransition && simParam.isAnimRun && simParam.current > 0.1 && !simParam.faultActive) {
+            if (showTransition) {
                 const wave = simParam.wavelength;
                 const color = getEmissionColorHex(wave);
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2;
-                ctx.setLineDash([4, 6]);
-                const arrowY = midY + Eg / 2 + bend;
+                ctx.setLineDash([4,6]);
+                const arrowY = midY + Eg/2 + bend;
                 const blink = 0.6 + 0.4 * Math.sin(frameCount * 0.05);
                 ctx.globalAlpha = blink;
                 ctx.beginPath();
                 ctx.moveTo(midX, arrowY);
-                ctx.lineTo(midX, midY - Eg / 2 + bend);
+                ctx.lineTo(midX, midY - Eg/2 + bend);
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.beginPath();
-                ctx.moveTo(midX, midY - Eg / 2 + bend + 8);
-                ctx.lineTo(midX - 6, midY - Eg / 2 + bend - 4);
-                ctx.lineTo(midX + 6, midY - Eg / 2 + bend - 4);
+                ctx.moveTo(midX, midY - Eg/2 + bend + 8);
+                ctx.lineTo(midX - 6, midY - Eg/2 + bend - 4);
+                ctx.lineTo(midX + 6, midY - Eg/2 + bend - 4);
                 ctx.closePath();
                 ctx.fillStyle = color;
                 ctx.fill();
                 ctx.globalAlpha = 1;
                 ctx.fillStyle = color;
                 ctx.font = "12px Microsoft Yahei";
-                ctx.fillText("⚡ 电子跃迁", midX - 45, midY - Eg / 2 + bend - 18);
+                ctx.fillText("⚡ 电子跃迁", midX - 45, midY - Eg/2 + bend - 18);
                 ctx.fillStyle = '#fbbf24';
                 ctx.font = "11px Microsoft Yahei";
                 ctx.fillText("✨ 光子发射", midX - 40, arrowY + 30);
@@ -1580,23 +1206,20 @@
 
             ctx.fillStyle = '#94a3b8';
             ctx.font = "12px Microsoft Yahei";
-            ctx.fillText("P 区", 80, midY - Eg / 2 + pShift - 14);
-            ctx.fillText("发光层", 290, midY - Eg / 2 + bend - 14);
-            ctx.fillText("N 区", 550, midY - Eg / 2 + nShift - 14);
-
+            ctx.fillText("P 区", 80, midY - Eg/2 + pShift - 14);
+            ctx.fillText("发光层", 290, midY - Eg/2 + bend - 14);
+            ctx.fillText("N 区", 550, midY - Eg/2 + nShift - 14);
             ctx.fillStyle = '#4a5a7a';
             ctx.font = "11px Microsoft Yahei";
-            ctx.fillText(`状态: ${getBiasStatus(v)}  |  Eg(eff) = ${egEff.toFixed(2)} eV  |  μ = ${simParam.mobilityE} cm²/(V·s)`, 40,
-                h - 8);
-            if (showTransition && simParam.current > 0.1) {
+            ctx.fillText(`状态: ${getBiasStatus(v)}  |  Eg(eff) = ${egEff.toFixed(2)} eV  |  μ = ${simParam.mobilityE} cm²/(V·s)`, 40, h-8);
+            if (showTransition) {
                 ctx.fillStyle = '#fbbf24';
-                ctx.fillText(`λ = ${simParam.wavelength} nm`, w - 120, h - 8);
+                ctx.fillText(`λ = ${simParam.wavelength} nm`, w-120, h-8);
             }
         }
-
         function drawAllBand() { drawBandSingle(); }
 
-        // ========== 11. 预设偏置按钮 ==========
+        // ---- 事件绑定 ----
         presetBtns.forEach(btn => {
             btn.addEventListener('click', function() {
                 const v = parseFloat(this.dataset.voltage);
@@ -1608,8 +1231,6 @@
                 calcSimulation();
             });
         });
-
-        // ========== 12. 滑块事件 ==========
         voltSlider.addEventListener('input', function() {
             const v = parseFloat(this.value);
             simParam.voltage = v;
@@ -1617,7 +1238,6 @@
             presetBtns.forEach(b => b.classList.remove('active'));
             calcSimulation();
         });
-
         bandSlider.addEventListener('input', function() {
             simParam.bandGap = parseFloat(this.value);
             bandValue.innerText = this.value;
@@ -1638,8 +1258,6 @@
             dopingValue.innerText = this.value;
             calcSimulation();
         });
-
-        // ========== 13. 预设材料 ==========
         materialPresets.forEach(btn => {
             btn.addEventListener('click', function() {
                 const eg = parseFloat(this.dataset.eg);
@@ -1652,7 +1270,6 @@
             });
         });
 
-        // ========== 14. 故障模拟 ==========
         faultBtn.addEventListener('click', function() {
             if (!simParam.faultActive) {
                 const types = ['overcurrent', 'overtemp'];
@@ -1671,12 +1288,11 @@
             ledEl.classList.remove('fault-flash');
         });
 
-        // ========== 15. 实验任务 ==========
+        // 实验任务 (同前)
         let experimentRunning = false;
         let experimentData = [];
         let experimentTimer = null;
         let expStep = 0;
-
         function runExperiment(type) {
             if (experimentRunning) return;
             experimentRunning = true;
@@ -1684,18 +1300,10 @@
             expStep = 0;
             expStatus.innerText = '运行中...';
             const steps = 20;
-            let startV = 0,
-                endV = 5;
-            if (type === 'iv' || type === 'li') {
-                startV = 0;
-                endV = 5;
-            } else if (type === 'color') {
-                startV = 0;
-                endV = 0;
-            }
-            let currentV = startV;
+            let startV = 0, endV = 5;
+            if (type === 'iv' || type === 'li') { startV = 0; endV = 5; }
+            else if (type === 'color') { startV = 0; endV = 0; }
             const stepSize = (endV - startV) / steps;
-
             experimentTimer = setInterval(() => {
                 if (expStep > steps) {
                     clearInterval(experimentTimer);
@@ -1724,21 +1332,23 @@
                     bandGap: simParam.bandGap,
                     temp: simParam.temp,
                     doping: simParam.doping,
-                    mobility: simParam.mobilityE
+                    mobility: simParam.mobilityE,
+                    iqe: parseFloat(iqeData.innerText),
+                    eqe: parseFloat(eqeData.innerText),
+                    wpe: parseFloat(wpeData.innerText),
+                    srhFactor: parseFloat(srhTempFactor.innerText)
                 };
                 experimentData.push(record);
                 expStep++;
                 expStatus.innerText = `进行中 ${expStep}/${steps}`;
             }, 300);
         }
-
         startExp.addEventListener('click', function() {
             const type = experimentSelect.value;
             if (type === 'none') { alert('请选择实验任务！'); return; }
             if (experimentRunning) { alert('实验正在进行中，请先停止。'); return; }
             runExperiment(type);
         });
-
         stopExp.addEventListener('click', function() {
             if (experimentTimer) {
                 clearInterval(experimentTimer);
@@ -1748,54 +1358,51 @@
             }
         });
 
-        // ========== 16. 导出 CSV ==========
+        // 导出CSV
         exportCsv.addEventListener('click', function() {
-            let header =
-                '电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),掺杂浓度(×10¹⁸),迁移率(cm²/(V·s)),热损耗(%),IQE(%),EQE(%),WPE(%)\n';
-            let row =
-                `${simParam.voltage.toFixed(2)},${simParam.current},${simParam.lightIntensity},${simParam.wavelength},${simParam.bandGap.toFixed(2)},${simParam.temp},${simParam.doping},${simParam.mobilityE},${simParam.heatLoss},${iqeData.innerText},${eqeData.innerText},${wpeData.innerText}\n`;
+            let header = '电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),掺杂浓度(×10¹⁸),迁移率(cm²/(V·s)),IQE(%),EQE(%),WPE(%),热损耗(%),SRH温度倍率\n';
+            let row = `${simParam.voltage.toFixed(2)},${simParam.current},${simParam.lightIntensity},${simParam.wavelength},${simParam.bandGap.toFixed(2)},${simParam.temp},${simParam.doping},${simParam.mobilityE},${iqeData.innerText},${eqeData.innerText},${wpeData.innerText},${lossData.innerText},${srhTempFactor.innerText}\n`;
             if (experimentData.length > 0) {
-                header =
-                    '步骤,电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),掺杂浓度(×10¹⁸),迁移率(cm²/(V·s))\n';
-                row = experimentData.map((d, i) =>
-                    `${i+1},${d.voltage.toFixed(2)},${d.current.toFixed(2)},${d.light.toFixed(2)},${d.wavelength},${d.bandGap.toFixed(2)},${d.temp},${d.doping},${d.mobility}`
-                ).join('\n');
+                header = '步骤,电压(V),电流(mA),光强(cd),波长(nm),禁带宽度(eV),温度(℃),IQE(%),EQE(%),WPE(%),SRH温度倍率\n';
+                row = experimentData.map((d,i) => `${i+1},${d.voltage.toFixed(2)},${d.current.toFixed(2)},${d.light.toFixed(2)},${d.wavelength},${d.bandGap.toFixed(2)},${d.temp},${d.iqe.toFixed(1)},${d.eqe.toFixed(1)},${d.wpe.toFixed(1)},${d.srhFactor.toFixed(2)}`).join('\n');
             }
             const content = header + row;
             const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'LED仿真数据_优化版.csv';
+            a.download = 'LED仿真数据_完整增强版.csv';
             a.click();
             URL.revokeObjectURL(url);
         });
 
-        // ========== 17. 导出截图 ==========
+        // 截图导出（包含效率曲线）
         exportScreenshot.addEventListener('click', function() {
             const c = document.createElement('canvas');
-            const w = 750,
-                h = 180 + 260 + 40;
-            c.width = w;
-            c.height = h;
+            const w = 750, h = 180 + 260 + 200 + 40; // 能带 + 曲线 + 效率曲线 + 间距
+            c.width = w; c.height = h;
             const ctx = c.getContext('2d');
             ctx.fillStyle = '#101824';
-            ctx.fillRect(0, 0, w, h);
+            ctx.fillRect(0,0,w,h);
+            // 画能带
             ctx.drawImage(bandCanvas, 0, 0, w, 180);
-            ctx.drawImage(chartCanvas, 0, 180 + 20, w, 260);
+            // 画曲线
+            ctx.drawImage(chartCanvas, 0, 180 + 10, w, 260);
+            // 画效率曲线
+            ctx.drawImage(effChartCanvas, 0, 180 + 10 + 260 + 10, w, 200);
             ctx.fillStyle = '#72c8ff';
             ctx.font = '16px Microsoft Yahei';
-            ctx.fillText('LED 仿真数据 (优化版)', 20, 30);
+            ctx.fillText('LED 仿真数据 (完整增强版)', 20, 30);
             ctx.fillStyle = '#94a3b8';
             ctx.font = '12px Microsoft Yahei';
-            ctx.fillText(`时间: ${new Date().toLocaleString()}  |  迁移率: ${simParam.mobilityE} cm²/(V·s)`, 20, 50);
+            ctx.fillText(`时间: ${new Date().toLocaleString()}  |  温度: ${simParam.temp}°C  |  IQE: ${iqeData.innerText}%`, 20, 50);
             const link = document.createElement('a');
-            link.download = 'LED仿真截图_优化版.png';
+            link.download = 'LED仿真截图_完整增强版.png';
             link.href = c.toDataURL('image/png');
             link.click();
         });
 
-        // ========== 18. 重置 ==========
+        // 重置
         resetBtn.addEventListener('click', function() {
             simParam.voltage = 2.0;
             simParam.bandGap = 1.8;
@@ -1819,10 +1426,7 @@
             document.querySelector('.preset-btn-nav[data-voltage="2.0"]').classList.add('active');
             particles = [];
             photons = [];
-            if (experimentTimer) { clearInterval(experimentTimer);
-                experimentTimer = null;
-                experimentRunning = false;
-                expStatus.innerText = '已重置'; }
+            if (experimentTimer) { clearInterval(experimentTimer); experimentTimer = null; experimentRunning = false; expStatus.innerText = '已重置'; }
             calcSimulation();
             faultWarning.style.display = 'none';
         });
@@ -1830,22 +1434,18 @@
         toggleAnim.addEventListener('click', function() {
             simParam.isAnimRun = !simParam.isAnimRun;
             this.innerText = simParam.isAnimRun ? '⏸️ 暂停动画' : '▶️ 启动动画';
-            if (!simParam.isAnimRun) { particles = [];
-                photons = []; }
+            if (!simParam.isAnimRun) { particles = []; photons = []; }
             updateLedEffect();
         });
 
-        // ========== 19. 初始化 ==========
+        // 初始化
         window.onload = function() {
             document.querySelector('.preset-btn-nav[data-voltage="2.0"]').classList.add('active');
             calcSimulation();
             animationLoop();
-            setTimeout(() => { drawAllChart();
-                drawAllBand(); }, 50);
+            setTimeout(() => { drawAllChart(); drawEfficiencyChart(); drawAllBand(); }, 50);
         };
-
-        window.addEventListener('resize', () => { drawAllChart();
-            drawAllBand(); });
+        window.addEventListener('resize', () => { drawAllChart(); drawEfficiencyChart(); drawAllBand(); });
     </script>
 </body>
 </html>
